@@ -8,7 +8,7 @@ infra-as-code manner.
 
 This is a
 [community maintained provider](https://www.terraform.io/docs/providers/type/community-index.html)
-and is not officially tested or maintained by Hashicorp.
+and is not officially tested or maintained by Hashicorp or Google.
 
 ## Installation
 
@@ -21,3 +21,7 @@ and is not officially tested or maintained by Hashicorp.
 ## Usage
 
 See the *examples/* directory.
+
+## Bugs & Feature Requests
+
+Please file issues in Github.

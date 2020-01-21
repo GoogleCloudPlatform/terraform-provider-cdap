@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
+// https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/artifact.html#set-an-artifact-property.
 func resourceArtifactProperty() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceArtifactPropertyCreate,

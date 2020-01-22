@@ -119,8 +119,6 @@ func resourceProfileCreate(d *schema.ResourceData, m interface{}) error {
 	prov := &provisioner{
 		Name: rawProv["name"].(string),
 	}
-	prof.Provisioner = prov
-
 	for _, rawProp := range rawProv["properties"].([]interface{}) {
 		rawPropMap := rawProp.(map[string]interface{})
 		prov.Properties = append(prov.Properties, &property{
@@ -129,6 +127,7 @@ func resourceProfileCreate(d *schema.ResourceData, m interface{}) error {
 			IsEditable: rawPropMap["is_editable"].(bool),
 		})
 	}
+	prof.Provisioner = prov
 
 	addr := urlJoin(config.host, "/v3/namespaces", config.namespace, "/profiles", name)
 
@@ -140,7 +139,6 @@ func resourceProfileCreate(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-
 	if _, err := httpCall(config.client, req); err != nil {
 		return err
 	}
@@ -196,8 +194,8 @@ func resourceProfileExists(d *schema.ResourceData, m interface{}) (bool, error) 
 		return false, err
 	}
 
-	for _, a := range profiles {
-		if a.Name == name {
+	for _, p := range profiles {
+		if p.Name == name {
 			return true, nil
 		}
 	}

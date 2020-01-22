@@ -23,6 +23,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const defaultNamespace = "default"
+
 // Provider returns a terraform.ResourceProvider.
 func Provider() *schema.Provider {
 	return &schema.Provider{
@@ -34,13 +36,6 @@ func Provider() *schema.Provider {
 			"token": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
-			},
-			"namespace": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-				DefaultFunc: func() (interface{}, error) {
-					return "default", nil
-				},
 			},
 		},
 		ConfigureFunc: configureProvider,
@@ -54,9 +49,8 @@ func Provider() *schema.Provider {
 
 // Config provides service configuration for service clients.
 type Config struct {
-	host      string
-	client    *http.Client
-	namespace string
+	host   string
+	client *http.Client
 }
 
 func configureProvider(d *schema.ResourceData) (interface{}, error) {
@@ -68,8 +62,7 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	client.Timeout = 30 * time.Minute
 
 	return &Config{
-		host:      d.Get("host").(string),
-		client:    client,
-		namespace: d.Get("namespace").(string),
+		host:   d.Get("host").(string),
+		client: client,
 	}, nil
 }

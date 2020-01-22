@@ -36,6 +36,11 @@ func resourceApplication() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"namespace": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
 			"config": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -48,7 +53,8 @@ func resourceApplication() *schema.Resource {
 func resourceApplicationCreate(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", config.namespace, "/apps", name)
+
+	addr := urlJoin(config.host, "/v3/namespaces", namespace(d), "/apps", name)
 
 	body := strings.NewReader(d.Get("config").(string))
 
@@ -72,7 +78,7 @@ func resourceApplicationRead(d *schema.ResourceData, m interface{}) error {
 func resourceApplicationDelete(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", config.namespace, "/apps", name)
+	addr := urlJoin(config.host, "/v3/namespaces", namespace(d), "/apps", name)
 
 	req, err := http.NewRequest(http.MethodDelete, addr, nil)
 	if err != nil {
@@ -85,7 +91,7 @@ func resourceApplicationDelete(d *schema.ResourceData, m interface{}) error {
 func resourceApplicationExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", config.namespace, "/apps")
+	addr := urlJoin(config.host, "/v3/namespaces", namespace(d), "/apps")
 	req, err := http.NewRequest(http.MethodGet, addr, nil)
 	if err != nil {
 		return false, err

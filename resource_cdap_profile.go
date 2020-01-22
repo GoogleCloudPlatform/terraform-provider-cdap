@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
+// https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/profile.html
 func resourceProfile() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceProfileCreate,

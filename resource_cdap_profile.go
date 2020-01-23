@@ -98,6 +98,8 @@ func resourceProfile() *schema.Resource {
 }
 
 type profile struct {
+	// Allow name to be omitted. This is because when creating a profile, the
+	// name is set in the URL instead of in the body.
 	Name        string       `json:"name,omitempty"`
 	Label       string       `json:"label"`
 	Description string       `json:"description,omitempty"`

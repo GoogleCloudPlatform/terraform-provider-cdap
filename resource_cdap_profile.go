@@ -36,6 +36,14 @@ func resourceProfile() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"namespace": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				DefaultFunc: func() (interface{}, error) {
+					return defaultNamespace, nil
+				},
+			},
 			"label": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -130,7 +138,7 @@ func resourceProfileCreate(d *schema.ResourceData, m interface{}) error {
 	}
 	prof.Provisioner = prov
 
-	addr := urlJoin(config.host, "/v3/namespaces", config.namespace, "/profiles", name)
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/profiles", name)
 
 	b, err := json.Marshal(prof)
 	if err != nil {
@@ -156,7 +164,7 @@ func resourceProfileDelete(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
 
-	addr := urlJoin(config.host, "/v3/namespaces", config.namespace, "/profiles", name)
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/profiles", name)
 
 	// Disable the profile first.
 	req, err := http.NewRequest(http.MethodPost, urlJoin(addr, "/disable"), nil)
@@ -178,7 +186,7 @@ func resourceProfileDelete(d *schema.ResourceData, m interface{}) error {
 func resourceProfileExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", config.namespace, "/profiles")
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/profiles")
 
 	req, err := http.NewRequest(http.MethodGet, addr, nil)
 	if err != nil {

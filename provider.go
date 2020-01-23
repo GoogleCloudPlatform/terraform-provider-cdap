@@ -23,6 +23,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const defaultNamespace = "default"
+
 // Provider returns a terraform.ResourceProvider.
 func Provider() *schema.Provider {
 	return &schema.Provider{

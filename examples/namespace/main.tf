@@ -28,5 +28,5 @@ provider "cdap" {
 }
 
 resource "cdap_namespace" "namespace" {
-    name = "example-namespace"
+    name = "example"
 }

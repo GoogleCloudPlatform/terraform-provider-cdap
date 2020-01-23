@@ -41,6 +41,9 @@ func resourceArtifact() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
+				DefaultFunc: func() (interface{}, error) {
+					return defaultNamespace, nil
+				},
 			},
 			"version": {
 				Type:     schema.TypeString,
@@ -67,7 +70,7 @@ func resourceArtifact() *schema.Resource {
 func resourceArtifactCreate(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", namespace(d), "/artifacts", name)
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", name)
 
 	jar, err := os.Open(d.Get("jar_binary_path").(string))
 	if err != nil {
@@ -107,7 +110,7 @@ func resourceArtifactRead(d *schema.ResourceData, m interface{}) error {
 func resourceArtifactDelete(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", namespace(d), "/artifacts", name, "/versions", d.Get("version").(string))
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", name, "/versions", d.Get("version").(string))
 
 	req, err := http.NewRequest(http.MethodDelete, addr, nil)
 	if err != nil {
@@ -120,7 +123,7 @@ func resourceArtifactDelete(d *schema.ResourceData, m interface{}) error {
 func resourceArtifactExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", namespace(d), "/artifacts")
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts")
 
 	req, err := http.NewRequest(http.MethodGet, addr, nil)
 	if err != nil {

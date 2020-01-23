@@ -40,6 +40,9 @@ func resourceArtifactProperty() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
+				DefaultFunc: func() (interface{}, error) {
+					return defaultNamespace, nil
+				},
 			},
 			"artifact_name": {
 				Type:     schema.TypeString,
@@ -63,7 +66,7 @@ func resourceArtifactProperty() *schema.Resource {
 func resourceArtifactPropertyCreate(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", namespace(d), "/artifacts", d.Get("artifact_name").(string), "/versions", d.Get("artifact_version").(string), "/properties", name)
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", d.Get("artifact_name").(string), "/versions", d.Get("artifact_version").(string), "/properties", name)
 
 	req, err := http.NewRequest(http.MethodPut, addr, strings.NewReader(d.Get("value").(string)))
 	if err != nil {
@@ -85,7 +88,7 @@ func resourceArtifactPropertyRead(d *schema.ResourceData, m interface{}) error {
 func resourceArtifactPropertyDelete(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", namespace(d), "/artifacts", d.Get("artifact_name").(string), "/versions", d.Get("artifact_version").(string), "/properties", name)
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", d.Get("artifact_name").(string), "/versions", d.Get("artifact_version").(string), "/properties", name)
 
 	req, err := http.NewRequest(http.MethodDelete, addr, nil)
 	if err != nil {
@@ -98,7 +101,7 @@ func resourceArtifactPropertyDelete(d *schema.ResourceData, m interface{}) error
 func resourceArtifactPropertyExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", namespace(d), "/artifacts", d.Get("artifact_name").(string), "/versions", d.Get("artifact_version").(string), "/properties")
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", d.Get("artifact_name").(string), "/versions", d.Get("artifact_version").(string), "/properties")
 
 	req, err := http.NewRequest(http.MethodGet, addr, nil)
 	if err != nil {

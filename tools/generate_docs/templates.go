@@ -20,6 +20,8 @@ The following fields are supported:
   (Required)
   {{elif $resource.Optional}}
   (Optional)
+  {{elif $resource.Computed}}
+  (Computed)
   {{end}}
   {{$resource.Description}}
 {{end}}

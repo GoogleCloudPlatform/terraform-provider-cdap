@@ -23,6 +23,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const defaultNamespace = "default"
+
 // Provider returns a terraform.ResourceProvider.
 func Provider() *schema.Provider {
 	return &schema.Provider{
@@ -45,9 +47,10 @@ func Provider() *schema.Provider {
 		},
 		ConfigureFunc: configureProvider,
 		ResourcesMap: map[string]*schema.Resource{
-			"cdap_application":       resourceApplication(),
-			"cdap_artifact":          resourceArtifact(),
-			"cdap_artifact_property": resourceArtifactProperty(),
+			"cdap_application":           resourceApplication(),
+			"cdap_artifact":              resourceArtifact(),
+			"cdap_artifact_property":     resourceArtifactProperty(),
+			"cdap_namespace_preferences": resourceNamespacePreferences(),
 		},
 	}
 }

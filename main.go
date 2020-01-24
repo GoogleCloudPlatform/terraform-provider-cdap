@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Terraform CDAP Provider prodives a Terraform provider to manage a CDAP api.
+// Package main serves a Terraform CDAP provider.
 package main
 
 import (

@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
-// https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/lifecycle.html.
+// https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/preferences.html
 func resourceNamespacePreferences() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceNamespacePreferencesCreate,

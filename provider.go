@@ -45,6 +45,7 @@ func Provider() *schema.Provider {
 			"cdap_artifact_property":     resourceArtifactProperty(),
 			"cdap_namespace":             resourceNamespace(),
 			"cdap_namespace_preferences": resourceNamespacePreferences(),
+			"cdap_profile":               resourceProfile(),
 		},
 	}
 }

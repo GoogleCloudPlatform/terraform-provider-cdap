@@ -7,8 +7,7 @@ for Terraform can be used to manage a CDAP API (exposed for example by a
 infra-as-code manner.
 
 This is a
-[community maintained provider](https://www.terraform.io/docs/providers/type/community-index.html)
-and is not officially tested or maintained by Hashicorp or Google.
+[community maintained provider](https://www.terraform.io/docs/providers/type/community-index.html) and not an official Google or Hashicorp product.
 
 ## Installation
 

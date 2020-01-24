@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Terraform CDAP Provider prodives a Terraform provider to manage a CDAP api.
-package main
+resource "google_data_fusion_instance" "instance" {
+  provider = google-beta
+  name = "example"
+  region = "us-central1"
+  type = "BASIC"
+  project = "example-project"
+}
 
-import (
-	"terraform-provider-cdap/cdap"
+data "google_client_config" "current" {}
 
-	"github.com/hashicorp/terraform-plugin-sdk/plugin"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
-)
+provider "cdap" {
+  host = "${google_data_fusion_instance.instance.service_endpoint}/api/"
+  token = data.google_client_config.current.access_token
+}
 
-func main() {
-	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: func() terraform.ResourceProvider {
-			return cdap.Provider()
-		},
-	})
+resource "cdap_namespace" "namespace" {
+    name = "example"
 }

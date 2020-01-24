@@ -12,31 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cdap
 
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
-// https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/lifecycle.html.
-func resourceApplication() *schema.Resource {
+// https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/namespace.html
+func resourceNamespace() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceApplicationCreate,
-		Read:   resourceApplicationRead,
-		Delete: resourceApplicationDelete,
-		Exists: resourceApplicationExists,
+		Create: resourceNamespaceCreate,
+		Read:   resourceNamespaceRead,
+		Delete: resourceNamespaceDelete,
+		Exists: resourceNamespaceExists,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
-			"config": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
@@ -45,14 +39,12 @@ func resourceApplication() *schema.Resource {
 	}
 }
 
-func resourceApplicationCreate(d *schema.ResourceData, m interface{}) error {
+func resourceNamespaceCreate(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", config.namespace, "/apps", name)
+	addr := urlJoin(config.host, "/v3/namespaces", name)
 
-	body := strings.NewReader(d.Get("config").(string))
-
-	req, err := http.NewRequest(http.MethodPut, addr, body)
+	req, err := http.NewRequest(http.MethodPut, addr, nil)
 	if err != nil {
 		return err
 	}
@@ -65,14 +57,14 @@ func resourceApplicationCreate(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceApplicationRead(d *schema.ResourceData, m interface{}) error {
+func resourceNamespaceRead(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
 
-func resourceApplicationDelete(d *schema.ResourceData, m interface{}) error {
+func resourceNamespaceDelete(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", config.namespace, "/apps", name)
+	addr := urlJoin(config.host, "/v3/namespaces", name)
 
 	req, err := http.NewRequest(http.MethodDelete, addr, nil)
 	if err != nil {
@@ -82,10 +74,11 @@ func resourceApplicationDelete(d *schema.ResourceData, m interface{}) error {
 	return err
 }
 
-func resourceApplicationExists(d *schema.ResourceData, m interface{}) (bool, error) {
+func resourceNamespaceExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", config.namespace, "/apps")
+	addr := urlJoin(config.host, "/v3/namespaces")
+
 	req, err := http.NewRequest(http.MethodGet, addr, nil)
 	if err != nil {
 		return false, err
@@ -96,17 +89,17 @@ func resourceApplicationExists(d *schema.ResourceData, m interface{}) (bool, err
 		return false, err
 	}
 
-	type app struct {
+	type namespace struct {
 		Name string `json:"name"`
 	}
 
-	var apps []app
-	if err := json.Unmarshal(b, &apps); err != nil {
+	var namespaces []namespace
+	if err := json.Unmarshal(b, &namespaces); err != nil {
 		return false, err
 	}
 
-	for _, a := range apps {
-		if a.Name == name {
+	for _, n := range namespaces {
+		if n.Name == name {
 			return true, nil
 		}
 	}

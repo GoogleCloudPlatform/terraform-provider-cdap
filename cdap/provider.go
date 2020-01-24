@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cdap
 
 import (
 	"context"
@@ -22,6 +22,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"golang.org/x/oauth2"
 )
+
+const defaultNamespace = "default"
 
 // Provider returns a terraform.ResourceProvider.
 func Provider() *schema.Provider {
@@ -35,28 +37,23 @@ func Provider() *schema.Provider {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"namespace": &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-				DefaultFunc: func() (interface{}, error) {
-					return "default", nil
-				},
-			},
 		},
 		ConfigureFunc: configureProvider,
 		ResourcesMap: map[string]*schema.Resource{
-			"cdap_application":       resourceApplication(),
-			"cdap_artifact":          resourceArtifact(),
-			"cdap_artifact_property": resourceArtifactProperty(),
+			"cdap_application":           resourceApplication(),
+			"cdap_artifact":              resourceArtifact(),
+			"cdap_artifact_property":     resourceArtifactProperty(),
+			"cdap_namespace":             resourceNamespace(),
+			"cdap_namespace_preferences": resourceNamespacePreferences(),
+			"cdap_profile":               resourceProfile(),
 		},
 	}
 }
 
 // Config provides service configuration for service clients.
 type Config struct {
-	host      string
-	client    *http.Client
-	namespace string
+	host   string
+	client *http.Client
 }
 
 func configureProvider(d *schema.ResourceData) (interface{}, error) {
@@ -68,8 +65,7 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	client.Timeout = 30 * time.Minute
 
 	return &Config{
-		host:      d.Get("host").(string),
-		client:    client,
-		namespace: d.Get("namespace").(string),
+		host:   d.Get("host").(string),
+		client: client,
 	}, nil
 }

@@ -38,7 +38,7 @@ func resourceNamespacePreferences() *schema.Resource {
 					return defaultNamespace, nil
 				},
 			},
-			"properties": {
+			"preferences": {
 				Type:     schema.TypeMap,
 				Required: true,
 				ForceNew: true,
@@ -55,7 +55,7 @@ func resourceNamespacePreferencesCreate(d *schema.ResourceData, m interface{}) e
 	namespace := d.Get("namespace").(string)
 	addr := urlJoin(config.host, "/v3/namespaces", namespace, "/preferences")
 
-	b, err := json.Marshal(d.Get("properties"))
+	b, err := json.Marshal(d.Get("preferences"))
 	if err != nil {
 		return err
 	}

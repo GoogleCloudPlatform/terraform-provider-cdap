@@ -30,3 +30,10 @@ provider "cdap" {
 resource "cdap_namespace" "namespace" {
     name = "example"
 }
+
+resource "cdap_namespace_preferences" "preferences" {
+  namespace = cdap_namespace.namespace.name
+  preferences = {
+    FOO = "BAR"
+  }
+}

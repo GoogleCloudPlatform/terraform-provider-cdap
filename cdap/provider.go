@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package cdap provides a Terraform provider to manage CDAP APIs.
 package cdap
 
 import (

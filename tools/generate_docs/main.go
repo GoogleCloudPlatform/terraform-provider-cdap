@@ -18,15 +18,18 @@ package main
 import (
 	"flag"
 	"log"
+
+	"terraform-provider-cdap/cdap"
 )
 
-var outputDir   = flag.String("output_dir", "", "Directory to write generated docs")
+var outputDir = flag.String("output_dir", "", "Directory to write generated docs")
 
 func main() {
+	flag.Parse()
 	if *outputDir == "" {
 		log.Fatal("--output_dir must be set")
 	}
-	if err := generate(nil, *outputDir); err != nil {
-		log.Fatal(err)
+	if err := generate(cdap.Provider(), *outputDir); err != nil {
+		log.Fatalf("failed to generate docs: %v", err)
 	}
 }

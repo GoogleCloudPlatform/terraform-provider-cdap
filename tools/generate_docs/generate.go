@@ -25,16 +25,43 @@ func generate(provider *schema.Provider, outputDir string) error {
 		return err
 	}
 
+	if len(provider.ResourcesMap) == 0 {
+		return nil
+	}
+
+	resourcesDir := filepath.Join(outputDir, "r")
+	if err := os.MkdirAll(resourcesDir, 0755); err != nil {
+		return err
+	}
+
 	for name, res := range provider.ResourcesMap {
 		var buf bytes.Buffer
-		args := templateArgs{Title: name, Schema: res.Schema}
+		args := templateArgs{Title: name, Schema: flattenSchema(res.Schema)}
 		if err := markdownTemplate.Execute(&buf, args); err != nil {
 			return err
 		}
-		p := filepath.Join(outputDir, "r", fmt.Sprintf("%s.md", name))
+		p := filepath.Join(resourcesDir, fmt.Sprintf("%s.md", name))
 		if err := ioutil.WriteFile(p, buf.Bytes(), 0644); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func flattenSchema(schemas map[string]*schema.Schema) map[string]*schema.Schema {
+	res := make(map[string]*schema.Schema)
+
+	for name, sc := range schemas {
+		res[name] = sc
+		if sc.Elem == nil {
+			continue
+		}
+		if resource, ok := sc.Elem.(*schema.Resource); ok {
+			for subName, subSc := range flattenSchema(resource.Schema) {
+				subName = name + "." + subName
+				res[subName] = subSc
+			}
+		}
+	}
+	return res
 }

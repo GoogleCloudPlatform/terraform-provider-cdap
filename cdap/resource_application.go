@@ -32,22 +32,25 @@ func resourceApplication() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The name of the application.",
 			},
 			"namespace": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				ForceNew:    true,
+				Description: "The name of the namespace in which this resource belongs. If not provided, the default namespace is used.",
 				DefaultFunc: func() (interface{}, error) {
 					return defaultNamespace, nil
 				},
 			},
 			"config": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The full config for this application.",
 			},
 		},
 	}

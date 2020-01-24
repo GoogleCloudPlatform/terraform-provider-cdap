@@ -38,9 +38,10 @@ func resourceArtifact() *schema.Resource {
 				ForceNew: true,
 			},
 			"namespace": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				ForceNew:    true,
+				Description: "The name of the namespace in which this resource belongs. If not provided, the default namespace is used.",
 				DefaultFunc: func() (interface{}, error) {
 					return defaultNamespace, nil
 				},

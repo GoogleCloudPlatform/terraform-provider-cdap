@@ -7,24 +7,24 @@ import (
 )
 
 var (
-	markdownTemplate = template.Must(template.New("provider").Parse(`
-# {{.Title}}
+	markdownTemplate = template.Must(template.New("provider").Parse(`# {{.Title}}
 
 ## Argument Reference
 
 The following fields are supported:
 
-{{range $name $resource := .Schema}}
+{{range $name, $resource := .Schema -}}
 * {{$name}}:
-  {{if $resource.Required}}
+  {{if $resource.Required -}}
   (Required)
-  {{elif $resource.Optional}}
+  {{else if $resource.Optional -}}
   (Optional)
-  {{elif $resource.Computed}}
+  {{else if $resource.Computed -}}
   (Computed)
-  {{end}}
+  {{end -}}
   {{$resource.Description}}
-{{end}}
+
+{{end -}}
 `))
 )
 

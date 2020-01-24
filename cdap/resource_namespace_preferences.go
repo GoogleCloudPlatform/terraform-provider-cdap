@@ -31,17 +31,19 @@ func resourceNamespacePreferences() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"namespace": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				ForceNew:    true,
+				Description: "The name of the namespace in which this resource belongs. If not provided, the default namespace is used.",
 				DefaultFunc: func() (interface{}, error) {
 					return defaultNamespace, nil
 				},
 			},
 			"preferences": {
-				Type:     schema.TypeMap,
-				Required: true,
-				ForceNew: true,
+				Type:        schema.TypeMap,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The preferences to set on the namespace.",
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},

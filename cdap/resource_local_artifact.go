@@ -68,7 +68,6 @@ func resourceLocalArtifact() *schema.Resource {
 	}
 }
 
-
 func resourceLocalArtifactCreate(d *schema.ResourceData, m interface{}) error {
 	// An artifact with the same name and version can be uploaded multiple times
 	// without error. Because of this, there is no need to do partial state
@@ -139,12 +138,12 @@ func initArtifactData(c *Config, d *schema.ResourceData) (*artifactData, error) 
 		return nil, err
 	}
 	name := d.Get("name").(string)
-	return &artifactData {
-		name: name,
-		version: d.Get("version").(string),
+	return &artifactData{
+		name:        name,
+		version:     d.Get("version").(string),
 		resourceURL: urlJoin(c.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", name),
-		config: ac,
-		jar: jar,
+		config:      ac,
+		jar:         jar,
 	}, nil
 }
 

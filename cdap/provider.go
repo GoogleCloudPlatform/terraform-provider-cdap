@@ -45,6 +45,7 @@ func Provider() *schema.Provider {
 		ResourcesMap: map[string]*schema.Resource{
 			"cdap_application":           resourceApplication(),
 			"cdap_artifact":              resourceArtifact(),
+			"cdap_local_artifact":        resourceLocalArtifact(),
 			"cdap_artifact_property":     resourceArtifactProperty(),
 			"cdap_namespace":             resourceNamespace(),
 			"cdap_namespace_preferences": resourceNamespacePreferences(),

@@ -2,7 +2,8 @@
 
 This
 [custom provider](https://www.terraform.io/docs/extend/writing-custom-providers.html)
-for Terraform can be used to manage a CDAP API (exposed for example by a
+for Terraform can be used to manage a
+[CDAP](https://docs.cdap.io/cdap/current/en/index.html) API (exposed for example by a
 [Cloud Data Fusion](https://cloud.google.com/data-fusion/) Instance) in an
 infra-as-code manner.
 

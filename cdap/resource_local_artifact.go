@@ -34,14 +34,16 @@ func resourceLocalArtifact() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The name of the artifact.",
 			},
 			"namespace": {
-				Type:     schema.TypeString,
-				Optional: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				ForceNew:    true,
+				Description: "The name of the namespace in which this resource belongs. If not provided, the default namespace is used.",
 				DefaultFunc: func() (interface{}, error) {
 					return defaultNamespace, nil
 				},
@@ -50,19 +52,22 @@ func resourceLocalArtifact() *schema.Resource {
 			// version from the jar. However, forcing the user to specify the version makes dealing
 			// with the resource easier because other API calls require it.
 			"version": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The version of the artifact. Must match the version in the JAR manifest.",
 			},
 			"jar_binary_path": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The path to the JAR binary for the artifact.",
 			},
 			"json_config_path": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "THe path to the JSON config of the artifact.",
 			},
 		},
 	}

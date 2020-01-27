@@ -33,10 +33,12 @@ func Provider() *schema.Provider {
 			"host": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				Description: "The address of the CDAP instance.",
 			},
 			"token": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
+				Description: "The OAuth token to use for all http calls to the instance.",
 			},
 		},
 		ConfigureFunc: configureProvider,

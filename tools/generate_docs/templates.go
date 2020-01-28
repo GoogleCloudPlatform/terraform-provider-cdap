@@ -22,7 +22,7 @@ import (
 
 var (
 	markdownTemplate = template.Must(template.New("provider").Parse(`
-<!- AUTO GENERATED CODE. DO NOT EDIT MANUALLY ->
+<!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY -->
 # {{.Title}}
 
 ## Argument Reference

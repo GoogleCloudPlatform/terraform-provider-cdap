@@ -1,4 +1,4 @@
-<!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY -->
+<!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
 # cdap_namespace
 
 ## Argument Reference

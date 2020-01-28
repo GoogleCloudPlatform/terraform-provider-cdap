@@ -1,3 +1,5 @@
+
+<!- AUTO GENERATED CODE. DO NOT EDIT MANUALLY ->
 # cdap_artifact_property
 
 ## Argument Reference

@@ -21,7 +21,9 @@ import (
 )
 
 var (
-	markdownTemplate = template.Must(template.New("provider").Parse(`# {{.Title}}
+	markdownTemplate = template.Must(template.New("provider").Parse(`
+<!- AUTO GENERATED CODE. DO NOT EDIT MANUALLY ->
+# {{.Title}}
 
 ## Argument Reference
 

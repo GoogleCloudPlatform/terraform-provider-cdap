@@ -147,7 +147,6 @@ func loadDataFromAction(ctx context.Context, bucket *storage.BucketHandle, objec
 		case "version":
 			delete(wantArgs, "version")
 			data.version = arg.Value
-			delete(wantArgs, "version")
 		case "config":
 			delete(wantArgs, "config")
 			confObj := bucket.Object(urlJoin(objectPath, arg.Value))

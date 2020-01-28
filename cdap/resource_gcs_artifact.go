@@ -74,7 +74,7 @@ type action struct {
 	Args []*struct {
 		Name  string `json:"name"`
 		Value string `json:"value"`
-	} `json:"arguments`
+	} `json:"arguments"`
 }
 
 func resourceGCSArtifactCreate(d *schema.ResourceData, m interface{}) error {
@@ -99,7 +99,7 @@ func resourceGCSArtifactCreate(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 	if err := uploadProps(config.client, addr, data); err != nil {
-
+		return err
 	}
 
 	d.Set("name", data.name)

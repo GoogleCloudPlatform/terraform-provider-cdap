@@ -4,23 +4,23 @@
 
 The following fields are supported:
 
-* artifact_name:
-  (Required)
+* artifact_name
+  (Required):
   
 
-* artifact_version:
-  (Required)
+* artifact_version
+  (Required):
   
 
-* name:
-  (Required)
+* name
+  (Required):
   
 
-* namespace:
-  (Optional)
+* namespace
+  (Optional):
   
 
-* value:
-  (Optional)
+* value
+  (Optional):
   
 

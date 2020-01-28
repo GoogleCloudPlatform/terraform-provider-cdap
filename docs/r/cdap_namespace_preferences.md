@@ -4,11 +4,11 @@
 
 The following fields are supported:
 
-* namespace:
-  (Optional)
+* namespace
+  (Optional):
   The name of the namespace in which this resource belongs. If not provided, the default namespace is used.
 
-* preferences:
-  (Required)
+* preferences
+  (Required):
   The preferences to set on the namespace.
 

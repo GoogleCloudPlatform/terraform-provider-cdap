@@ -4,23 +4,23 @@
 
 The following fields are supported:
 
-* extends:
-  (Optional)
+* extends
+  (Optional):
   
 
-* jar_binary_path:
-  (Required)
+* jar_binary_path
+  (Required):
   
 
-* name:
-  (Required)
+* name
+  (Required):
   
 
-* namespace:
-  (Optional)
+* namespace
+  (Optional):
   The name of the namespace in which this resource belongs. If not provided, the default namespace is used.
 
-* version:
-  (Optional)
+* version
+  (Optional):
   
 

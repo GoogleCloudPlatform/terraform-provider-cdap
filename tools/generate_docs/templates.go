@@ -36,7 +36,7 @@ The following fields are supported:
   {{else if $resource.Computed -}}
   (Computed):
   {{end -}}
-  {{- $resource.Description}}
+  {{$resource.Description}}
 
 {{end -}}
 `))

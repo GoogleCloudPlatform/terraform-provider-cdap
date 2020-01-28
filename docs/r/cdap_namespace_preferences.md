@@ -1,4 +1,3 @@
-
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY -->
 # cdap_namespace_preferences
 

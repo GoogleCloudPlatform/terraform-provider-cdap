@@ -15,9 +15,9 @@
 package cdap
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
@@ -46,11 +46,49 @@ func resourceApplication() *schema.Resource {
 					return defaultNamespace, nil
 				},
 			},
+			"description": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				ForceNew:    true,
+				Description: "A user friendly description of the application.",
+			},
+			"artifact": {
+				Type:        schema.TypeList,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The artifact used to create the pipeline",
+				MaxItems:    1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:        schema.TypeString,
+							Required:    true,
+							ForceNew:    true,
+							Description: "The name of the artifact.",
+						},
+						"version": {
+							Type:        schema.TypeString,
+							Required:    true,
+							ForceNew:    true,
+							Description: "The version of the artifact.",
+						},
+						"scope": {
+							Type:        schema.TypeString,
+							Optional:    true,
+							ForceNew:    true,
+							Description: "The scope of the artifact, one of either SYSTEM or USER. Defaults to SYSTEM.",
+							DefaultFunc: func() (interface{}, error) {
+								return "SYSTEM", nil
+							},
+						},
+					},
+				},
+			},
 			"config": {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "The full config for this application.",
+				Description: "The JSON encoded configuration of the pipeline",
 			},
 		},
 	}
@@ -62,9 +100,27 @@ func resourceApplicationCreate(d *schema.ResourceData, m interface{}) error {
 
 	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/apps", name)
 
-	body := strings.NewReader(d.Get("config").(string))
+	confObj := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(d.Get("config").(string)), &confObj); err != nil {
+		return err
+	}
 
-	req, err := http.NewRequest(http.MethodPut, addr, body)
+	obj := map[string]interface{}{
+		"name":     name,
+		"artifact": d.Get("artifact").([]interface{})[0],
+		"config":   confObj,
+	}
+
+	if v, ok := d.GetOk("description"); ok {
+		obj["description"] = v
+	}
+
+	b, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, addr, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}

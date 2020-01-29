@@ -35,6 +35,7 @@ resource "cdap_profile" "profile" {
         properties {
             name = "projectId"
             value = "example-project"
+            is_editable = false
         }
     }
 }

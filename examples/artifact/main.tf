@@ -11,6 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+locals {
+  hub_bucket = "aeba5c94-db31-451a-85ea-27047cbe133b"
+}
 
 resource "google_data_fusion_instance" "instance" {
   provider = google-beta
@@ -18,6 +21,9 @@ resource "google_data_fusion_instance" "instance" {
   region = "us-central1"
   type = "BASIC"
   project = "example-project"
+  options = {
+    "market.base.url": "https://storage.googleapis.com/${local.hub_bucket}"
+  }
 }
 
 data "google_client_config" "current" {}
@@ -27,31 +33,15 @@ provider "cdap" {
   token = data.google_client_config.current.access_token
 }
 
-# https://github.com/data-integrations/trash
-resource "cdap_artifact" "trash" {
-  name = "trash-plugin"
-  version = "1.2.0"
-  extends = [
-    "system:cdap-data-pipeline[6.0.0-SNAPSHOT,7.0.0-SNAPSHOT)",
-    "system:cdap-data-streams[6.0.0-SNAPSHOT,7.0.0-SNAPSHOT)",
-    "system:cdap-etl-batch[6.0.0-SNAPSHOT,7.0.0-SNAPSHOT)",
-    "system:cdap-etl-realtime[6.0.0-SNAPSHOT,7.0.0-SNAPSHOT)",
-  ]
-  
-  # See README.md on how to build or fetch this.
-  jar_binary_path = "${path.module}/trash-plugin-1.2.0.jar"
+# Option 1: Path in GCS bucket containing the spec, JAR and JSON config.
+resource "cdap_gcs_artifact" "gcs_whistler_1_0_0" {
+  bucket_path = "gs://${local.hub_bucket}/packages/healthcare-mapping-transform/1.0.0"
 }
 
-resource "cdap_artifact_property" "trash_batchsink" {
-  name = "widgets.Trash-batchsink"
-  artifact_name = cdap_artifact.trash.name
-  artifact_version = cdap_artifact.trash.version
-  value = "{\"metadata\":{\"spec-version\":\"1.0\"},\"configuration-groups\":[{\"label\":\"Trash Configuration\",\"properties\":[{\"widget-type\":\"textbox\",\"label\":\"Reference Name\",\"name\":\"referenceName\",\"description\":\"Reference specifies the name to be used to track this external source\",\"widget-attributes\":{\"default\":\"Trash\"}}]}]}"
-}
-
-resource "cdap_artifact_property" "trash_doc" {
-  name = "widgets.Trash-batchsink"
-  artifact_name = cdap_artifact.trash.name
-  artifact_version = cdap_artifact.trash.version
-  value = "# Trash\n\nTrash consumes all the records on the input and eats them all,\nmeans no output is generated or no output is stored anywhere.\n"
+# Option 2: Download or compile JAR and JSON config and pass as local files.
+resource "cdap_local_artifact" "local_whistler_1_0_0" {
+  name = "whistler-transform"
+  version = "1.0.0"
+  json_config)path = "./TODO/whistler-transform-1.0.0.json"
+  jar_binary_path = "./TODO/whistler-transform-1.0.0.jar"
 }

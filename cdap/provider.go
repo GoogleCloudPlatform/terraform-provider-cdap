@@ -20,8 +20,10 @@ import (
 	"net/http"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"golang.org/x/oauth2"
+	"google.golang.org/api/option"
 )
 
 const defaultNamespace = "default"
@@ -43,6 +45,7 @@ func Provider() *schema.Provider {
 		ResourcesMap: map[string]*schema.Resource{
 			"cdap_application":           resourceApplication(),
 			"cdap_artifact":              resourceArtifact(),
+			"cdap_gcs_artifact":          resourceGCSArtifact(),
 			"cdap_local_artifact":        resourceLocalArtifact(),
 			"cdap_artifact_property":     resourceArtifactProperty(),
 			"cdap_namespace":             resourceNamespace(),
@@ -54,8 +57,9 @@ func Provider() *schema.Provider {
 
 // Config provides service configuration for service clients.
 type Config struct {
-	host   string
-	client *http.Client
+	host          string
+	client        *http.Client // TODO: rename to httpClient
+	storageClient *storage.Client
 }
 
 func configureProvider(d *schema.ResourceData) (interface{}, error) {
@@ -66,8 +70,14 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	}))
 	client.Timeout = 30 * time.Minute
 
+	storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
-		host:   d.Get("host").(string),
-		client: client,
+		host:          d.Get("host").(string),
+		client:        client,
+		storageClient: storageClient,
 	}, nil
 }

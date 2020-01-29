@@ -18,9 +18,9 @@ This is a
 -   Move the binary to a location your Terraform configs can find it (see
     [here](https://www.terraform.io/docs/configuration/providers.html#third-party-plugins)).
 
-## Usage
+## Documentation
 
-See the *examples/* directory.
+See the [docs/](docs/) and [examples/](examples/) directories.
 
 ## Bugs & Feature Requests
 

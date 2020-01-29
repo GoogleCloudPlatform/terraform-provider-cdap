@@ -27,6 +27,9 @@ import (
 
 var bucketPathRE = regexp.MustCompile(`^gs://(.+)/(.+)$`)
 
+// resourceGCSArtifact supports deploying an artifact by providing a GCS path.
+// We need to use references like GCS or filepaths to avoid needing to pass and
+// store the entire JAR's contents as a string.
 func resourceGCSArtifact() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceGCSArtifactCreate,
@@ -81,6 +84,7 @@ func resourceGCSArtifactCreate(d *schema.ResourceData, m interface{}) error {
 	ctx := context.Background()
 	config := m.(*Config)
 
+	// matches is in the form [matched substring, bucket name, object name].
 	matches := bucketPathRE.FindStringSubmatch(d.Get("bucket_path").(string))
 	if len(matches) != 3 {
 		return fmt.Errorf("unexpected bucket path: got %q submatches, want 3", len(matches))

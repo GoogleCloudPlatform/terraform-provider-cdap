@@ -33,12 +33,12 @@ provider "cdap" {
   token = data.google_client_config.current.access_token
 }
 
-# Option 1: From GCS.
+# Option 1: Path in GCS bucket containing the spec, JAR and JSON config.
 resource "cdap_gcs_artifact" "gcs_whistler_1_0_0" {
   bucket_path = "gs://${local.hub_bucket}/packages/healthcare-mapping-transform/1.0.0"
 }
 
-# Option 2: Download JAR and JSON config and pass as local files.
+# Option 2: Download or compile JAR and JSON config and pass as local files.
 resource "cdap_local_artifact" "local_whistler_1_0_0" {
   name = "whistler-transform"
   version = "1.0.0"

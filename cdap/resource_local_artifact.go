@@ -27,9 +27,9 @@ import (
 func resourceLocalArtifact() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceLocalArtifactCreate,
-		Read:   resourceArtifactRead,
-		Delete: resourceArtifactDelete,
-		Exists: resourceArtifactExists,
+		Read:   resourceLocalArtifactRead,
+		Delete: resourceLocalArtifactDelete,
+		Exists: resourceLocalArtifactExists,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -164,4 +164,53 @@ func readArtifactConfig(fileName string) (*artifactConfig, error) {
 		return nil, err
 	}
 	return &c, nil
+}
+
+func resourceLocalArtifactRead(d *schema.ResourceData, m interface{}) error {
+	return nil
+}
+
+func resourceLocalArtifactDelete(d *schema.ResourceData, m interface{}) error {
+	config := m.(*Config)
+	name := d.Get("name").(string)
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", name, "/versions", d.Get("version").(string))
+
+	req, err := http.NewRequest(http.MethodDelete, addr, nil)
+	if err != nil {
+		return err
+	}
+	_, err = httpCall(config.client, req)
+	return err
+}
+
+func resourceLocalArtifactExists(d *schema.ResourceData, m interface{}) (bool, error) {
+	config := m.(*Config)
+	name := d.Get("name").(string)
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts")
+
+	req, err := http.NewRequest(http.MethodGet, addr, nil)
+	if err != nil {
+		return false, err
+	}
+
+	b, err := httpCall(config.client, req)
+	if err != nil {
+		return false, err
+	}
+
+	type artifact struct {
+		Name string `json:"name"`
+	}
+
+	var artifacts []artifact
+	if err := json.Unmarshal(b, &artifacts); err != nil {
+		return false, err
+	}
+
+	for _, a := range artifacts {
+		if a.Name == name {
+			return true, nil
+		}
+	}
+	return false, nil
 }

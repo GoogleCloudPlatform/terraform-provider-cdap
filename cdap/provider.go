@@ -33,23 +33,21 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"host": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
 				Description: "The address of the CDAP instance.",
 			},
 			"token": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
 				Description: "The OAuth token to use for all http calls to the instance.",
 			},
 		},
 		ConfigureFunc: configureProvider,
 		ResourcesMap: map[string]*schema.Resource{
 			"cdap_application":           resourceApplication(),
-			"cdap_artifact":              resourceArtifact(),
 			"cdap_gcs_artifact":          resourceGCSArtifact(),
 			"cdap_local_artifact":        resourceLocalArtifact(),
-			"cdap_artifact_property":     resourceArtifactProperty(),
 			"cdap_namespace":             resourceNamespace(),
 			"cdap_namespace_preferences": resourceNamespacePreferences(),
 			"cdap_profile":               resourceProfile(),

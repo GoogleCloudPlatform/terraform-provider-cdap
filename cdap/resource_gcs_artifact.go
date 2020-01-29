@@ -33,9 +33,9 @@ var bucketPathRE = regexp.MustCompile(`^gs://(.+)/(.+)$`)
 func resourceGCSArtifact() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceGCSArtifactCreate,
-		Read:   resourceArtifactRead,
-		Delete: resourceArtifactDelete,
-		Exists: resourceArtifactExists,
+		Read:   resourceLocalArtifactRead,
+		Delete: resourceLocalArtifactDelete,
+		Exists: resourceLocalArtifactExists,
 
 		Schema: map[string]*schema.Schema{
 			"name": {

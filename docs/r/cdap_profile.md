@@ -34,7 +34,7 @@ The following fields are supported:
   The properties of the provisioner.
 
 * profile_provisioner.properties.is_editable
-  (Optional):
+  (Required):
   Whether the value can be updated.
 
 * profile_provisioner.properties.name

@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -79,23 +78,23 @@ func resourceLocalArtifactCreate(d *schema.ResourceData, m interface{}) error {
 	// management to account for the facdt that setting properties may fail
 	// because uploading a jar can occur multiple times without error.
 	config := m.(*Config)
-	ad, err := initArtifactData(config, d)
+	data, err := initArtifactData(d)
 	if err != nil {
 		return err
 	}
-	defer ad.Close()
-	if err := uploadJar(config.client, ad); err != nil {
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", data.name)
+	if err := uploadJar(config.client, addr, data); err != nil {
 		return err
 	}
-	if err := uploadProps(config.client, ad); err != nil {
+	if err := uploadProps(config.client, addr, data); err != nil {
 		return err
 	}
-	d.SetId(ad.name)
+	d.SetId(data.name)
 	return nil
 }
 
-func uploadJar(client *http.Client, d *artifactData) error {
-	req, err := http.NewRequest(http.MethodPost, d.resourceURL, d.jar)
+func uploadJar(client *http.Client, addr string, d *artifactData) error {
+	req, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(d.jar))
 	if err != nil {
 		return err
 	}
@@ -108,8 +107,8 @@ func uploadJar(client *http.Client, d *artifactData) error {
 	return nil
 }
 
-func uploadProps(client *http.Client, d *artifactData) error {
-	addr := urlJoin(d.resourceURL, "/versions", d.version, "/properties")
+func uploadProps(client *http.Client, artifactAddr string, d *artifactData) error {
+	addr := urlJoin(artifactAddr, "/versions", d.version, "/properties")
 	b, err := json.Marshal(d.config.Properties)
 	if err != nil {
 		return err
@@ -126,15 +125,14 @@ func uploadProps(client *http.Client, d *artifactData) error {
 }
 
 type artifactData struct {
-	name        string
-	version     string
-	resourceURL string
-	config      *artifactConfig
-	jar         *os.File
+	name    string
+	version string
+	config  *artifactConfig
+	jar     []byte
 }
 
-func initArtifactData(c *Config, d *schema.ResourceData) (*artifactData, error) {
-	jar, err := os.Open(d.Get("jar_binary_path").(string))
+func initArtifactData(d *schema.ResourceData) (*artifactData, error) {
+	jar, err := ioutil.ReadFile(d.Get("jar_binary_path").(string))
 	if err != nil {
 		return nil, err
 	}
@@ -144,16 +142,11 @@ func initArtifactData(c *Config, d *schema.ResourceData) (*artifactData, error) 
 	}
 	name := d.Get("name").(string)
 	return &artifactData{
-		name:        name,
-		version:     d.Get("version").(string),
-		resourceURL: urlJoin(c.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", name),
-		config:      ac,
-		jar:         jar,
+		name:    name,
+		version: d.Get("version").(string),
+		config:  ac,
+		jar:     jar,
 	}, nil
-}
-
-func (d artifactData) Close() error {
-	return d.jar.Close()
 }
 
 type artifactConfig struct {

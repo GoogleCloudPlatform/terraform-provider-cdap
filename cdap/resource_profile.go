@@ -93,7 +93,7 @@ func resourceProfile() *schema.Resource {
 									},
 									"is_editable": {
 										Type:        schema.TypeBool,
-										Optional:    true,
+										Required:    true,
 										ForceNew:    true,
 										Description: "Whether the value can be updated.",
 									},

@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
-// resourceGCSArtifact supports deploying an artifact by providing a local filepath.
+// resourceLocalArtifact supports deploying an artifact by providing a local filepath.
 // We need to use references like GCS or filepaths to avoid needing to pass and
 // store the entire JAR's contents as a string.
 func resourceLocalArtifact() *schema.Resource {

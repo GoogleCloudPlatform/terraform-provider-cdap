@@ -97,7 +97,9 @@ func resourceLocalArtifactCreate(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-	uploadArtifact(config, d, a)
+	if err := uploadArtifact(config, d, a); err != nil {
+		return err
+	}
 	d.SetId(a.name)
 	return nil
 }

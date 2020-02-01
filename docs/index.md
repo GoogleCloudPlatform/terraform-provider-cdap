@@ -1,6 +1,46 @@
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
 # CDAP Provider
 
+
+## Installation
+
+-  Download the provider binary from the
+   [releases page](https://github.com/GoogleCloudPlatform/terraform-provider-cdap/releases)
+   page.
+
+-  Move the binary to a location your Terraform configs can
+   [find it]](https://www.terraform.io/docs/configuration/providers.html#third-party-plugins).
+
+## Usage
+
+In your Terraform config, add a provider block as follows:
+
+```
+provider "cdap" {
+    host  = "<HOST>"
+    token = "<TOKEN>"
+}
+```
+
+An example of a CDAP provider initialized on GCP Cloud Data Fusion:
+
+```
+resource "google_data_fusion_instance" "instance" {
+  provider = google-beta
+  name     = "example"
+  region   = "us-central1"
+  type     = "BASIC"
+  project  = "example-project"
+}
+
+data "google_client_config" "current" {}
+
+provider "cdap" {
+  host  = "${google_data_fusion_instance.instance.service_endpoint}/api/"
+  token = data.google_client_config.current.access_token
+}
+```
+
 ## Argument Reference
 
 The following fields are supported:

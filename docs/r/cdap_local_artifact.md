@@ -1,6 +1,18 @@
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
 # cdap_local_artifact
 
+
+# Example
+
+```
+resource "cdap_local_artifact" "local_whistler_1_0_0" {
+  name             = "whistler-transform"
+  version          = "1.0.0"
+  json_config_path = "./example-dir/whistler-transform-1.0.0.json"
+  jar_binary_path  = "./example-dir/whistler-transform-1.0.0.jar"
+}
+```
+
 ## Argument Reference
 
 The following fields are supported:

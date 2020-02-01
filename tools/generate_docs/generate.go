@@ -37,7 +37,6 @@ func generate(provider *schema.Provider, tmplDir, outputDir string) error {
 
 	var buf bytes.Buffer
 	args := map[string]interface{}{
-		"Title":        "CDAP Provider",
 		"Schema":       provider.Schema,
 		"ResourcesMap": provider.ResourcesMap,
 	}

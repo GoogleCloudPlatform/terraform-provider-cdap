@@ -1,6 +1,24 @@
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
 # cdap_profile
 
+
+# Example
+
+```
+resource "cdap_profile" "profile" {
+    name  = "example-profile"
+    label = "example-profile"
+    profile_provisioner {
+        name = "gcp-dataproc"
+        properties {
+            name        = "projectId"
+            value       = "example-project"
+            is_editable = false
+        }
+    }
+}
+```
+
 ## Argument Reference
 
 The following fields are supported:

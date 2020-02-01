@@ -1,2 +1,20 @@
 {{template "header" .}}
+
+# Example
+
+```
+resource "cdap_profile" "profile" {
+    name  = "example-profile"
+    label = "example-profile"
+    profile_provisioner {
+        name = "gcp-dataproc"
+        properties {
+            name        = "projectId"
+            value       = "example-project"
+            is_editable = false
+        }
+    }
+}
+```
+
 {{template "schema" .}}

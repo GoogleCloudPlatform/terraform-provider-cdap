@@ -1,0 +1,18 @@
+{{define "schema" -}}
+## Argument Reference
+
+The following fields are supported:
+
+{{range $name, $resource := .Schema -}}
+* {{$name}}
+  {{if $resource.Required -}}
+  (Required):
+  {{else if $resource.Optional -}}
+  (Optional):
+  {{else if $resource.Computed -}}
+  (Computed):
+  {{end -}}
+  {{$resource.Description}}
+
+{{- end -}}
+{{- end -}}

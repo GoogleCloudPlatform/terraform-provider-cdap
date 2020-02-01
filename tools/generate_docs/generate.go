@@ -36,7 +36,11 @@ func generate(provider *schema.Provider, tmplDir, outputDir string) error {
 	}
 
 	var buf bytes.Buffer
-	args := templateArgs{Title: "CDAP Provider", Schema: provider.Schema}
+	args := map[string]interface{}{
+		"Title":        "CDAP Provider",
+		"Schema":       provider.Schema,
+		"ResourcesMap": provider.ResourcesMap,
+	}
 	if err := tmpl.Execute(&buf, args); err != nil {
 		return err
 	}
@@ -61,7 +65,10 @@ func generate(provider *schema.Provider, tmplDir, outputDir string) error {
 			return err
 		}
 		var buf bytes.Buffer
-		args := templateArgs{Title: name, Schema: flattenSchema(res.Schema)}
+		args := map[string]interface{}{
+			"Title":  name,
+			"Schema": flattenSchema(res.Schema),
+		}
 		if err := tmpl.Execute(&buf, args); err != nil {
 			return err
 		}
@@ -84,11 +91,6 @@ func templateFiles(dir string, files ...string) []string {
 		paths = append(paths, filepath.Join(dir, t))
 	}
 	return paths
-}
-
-type templateArgs struct {
-	Title  string
-	Schema map[string]*schema.Schema
 }
 
 func flattenSchema(schemas map[string]*schema.Schema) map[string]*schema.Schema {

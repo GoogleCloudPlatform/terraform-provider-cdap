@@ -1,2 +1,8 @@
 {{template "header" .}}
 {{template "schema" .}}
+
+## Resources
+
+{{range $r, $m := .ResourcesMap -}}
+* [{{$r}}](r/{{$r}})
+{{end -}}

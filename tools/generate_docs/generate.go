@@ -20,22 +20,28 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"text/template"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
-func generate(provider *schema.Provider, outputDir string) error {
+func generate(provider *schema.Provider, tmplDir, outputDir string) error {
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return err
+	}
+
+	tmpl, err := template.New("index.md.tmpl").ParseFiles(templateFiles(tmplDir, "index.md.tmpl")...)
+	if err != nil {
 		return err
 	}
 
 	var buf bytes.Buffer
 	args := templateArgs{Title: "CDAP Provider", Schema: provider.Schema}
-	if err := markdownTemplate.Execute(&buf, args); err != nil {
+	if err := tmpl.Execute(&buf, args); err != nil {
 		return err
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(outputDir, "provider.md"), buf.Bytes(), 0644); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(outputDir, "index.md"), buf.Bytes(), 0644); err != nil {
 		return err
 	}
 
@@ -43,23 +49,46 @@ func generate(provider *schema.Provider, outputDir string) error {
 		return nil
 	}
 
-	resourcesDir := filepath.Join(outputDir, "r")
-	if err := os.MkdirAll(resourcesDir, 0755); err != nil {
+	resourcesOutputDir := filepath.Join(outputDir, "r")
+	if err := os.MkdirAll(resourcesOutputDir, 0755); err != nil {
 		return err
 	}
 
 	for name, res := range provider.ResourcesMap {
-		var buf bytes.Buffer
-		args := templateArgs{Title: name, Schema: flattenSchema(res.Schema)}
-		if err := markdownTemplate.Execute(&buf, args); err != nil {
+		tmplName := fmt.Sprintf("%s.md.tmpl", name)
+		tmpl, err := template.New(tmplName).ParseFiles(templateFiles(tmplDir, "r/"+tmplName)...)
+		if err != nil {
 			return err
 		}
-		p := filepath.Join(resourcesDir, fmt.Sprintf("%s.md", name))
+		var buf bytes.Buffer
+		args := templateArgs{Title: name, Schema: flattenSchema(res.Schema)}
+		if err := tmpl.Execute(&buf, args); err != nil {
+			return err
+		}
+		p := filepath.Join(resourcesOutputDir, fmt.Sprintf("%s.md", name))
 		if err := ioutil.WriteFile(p, buf.Bytes(), 0644); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func templateFiles(dir string, files ...string) []string {
+	helpers := []string{
+		"header.md.tmpl",
+		"schema.md.tmpl",
+	}
+
+	var paths []string
+	for _, t := range append(files, helpers...) {
+		paths = append(paths, filepath.Join(dir, t))
+	}
+	return paths
+}
+
+type templateArgs struct {
+	Title  string
+	Schema map[string]*schema.Schema
 }
 
 func flattenSchema(schemas map[string]*schema.Schema) map[string]*schema.Schema {

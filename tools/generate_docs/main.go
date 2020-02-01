@@ -22,14 +22,20 @@ import (
 	"terraform-provider-cdap/cdap"
 )
 
-var outputDir = flag.String("output_dir", "", "Directory to write generated docs")
+var (
+	tmplDir   = flag.String("template_dir", "", "Directory containing template files")
+	outputDir = flag.String("output_dir", "", "Directory to write generated docs")
+)
 
 func main() {
 	flag.Parse()
+	if *tmplDir == "" {
+		log.Fatal("--template_dir must be set")
+	}
 	if *outputDir == "" {
 		log.Fatal("--output_dir must be set")
 	}
-	if err := generate(cdap.Provider(), *outputDir); err != nil {
+	if err := generate(cdap.Provider(), *tmplDir, *outputDir); err != nil {
 		log.Fatalf("failed to generate docs: %v", err)
 	}
 }

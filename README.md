@@ -10,17 +10,17 @@ infra-as-code manner.
 This is a
 [community maintained provider](https://www.terraform.io/docs/providers/type/community-index.html) and not an official Google or Hashicorp product.
 
-## Installation
-
--   Build the provider by running `go build` from the root directory (see
-    [here](https://golang.org/cmd/go/#hdr-Compile_packages_and_dependencies)).
-
--   Move the binary to a location your Terraform configs can find it (see
-    [here](https://www.terraform.io/docs/configuration/providers.html#third-party-plugins)).
 
 ## Documentation
 
-See the [docs/](docs/) and [examples/](examples/) directories.
+* Website: https://googlecloudplatform.github.io/terraform-provider-cdap/
+* Examples: [examples/](examples/)
+
+
+## Development
+
+-   Build the provider by running `go build` from the root directory.
+
 
 ## Bugs & Feature Requests
 

@@ -1,3 +1,4 @@
+<!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
 ## Installation
 
 -  Download the provider binary from the

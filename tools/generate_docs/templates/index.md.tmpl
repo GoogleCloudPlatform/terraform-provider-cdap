@@ -7,20 +7,11 @@
    page.
 
 -  Move the binary to a location your Terraform configs can
-   [find it]](https://www.terraform.io/docs/configuration/providers.html#third-party-plugins).
+   [find it](https://www.terraform.io/docs/configuration/providers.html#third-party-plugins).
 
 ## Usage
 
-In your Terraform config, add a provider block as follows:
-
-```
-provider "cdap" {
-    host  = "<HOST>"
-    token = "<TOKEN>"
-}
-```
-
-An example of a CDAP provider initialized on GCP Cloud Data Fusion:
+An example of the CDAP provider initialized on a GCP Cloud Data Fusion instance:
 
 ```
 resource "google_data_fusion_instance" "instance" {

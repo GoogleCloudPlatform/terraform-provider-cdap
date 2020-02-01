@@ -1,7 +1,4 @@
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
-# CDAP Provider
-
-
 ## Installation
 
 -  Download the provider binary from the

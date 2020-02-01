@@ -1,2 +1,14 @@
 {{template "header" .}}
+
+# Example
+
+```
+resource "cdap_namespace_preferences" "preferences" {
+  namespace   = "example"
+  preferences = {
+    FOO = "BAR"
+  }
+}
+```
+
 {{template "schema" .}}

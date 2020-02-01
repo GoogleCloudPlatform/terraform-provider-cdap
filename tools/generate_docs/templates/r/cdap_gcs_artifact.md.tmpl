@@ -1,2 +1,18 @@
 {{template "header" .}}
+
+# Example
+
+```
+locals {
+    bucket = "aeba5c94-db31-451a-85ea-27047cbe133b"
+}
+
+resource "cdap_gcs_artifact" "gcs_whistler_1_0_0" {
+  name             = "whistler-transform"
+  version          = "1.0.0"
+  json_config_path = "gs://${local.bucket}/packages/healthcare-mapping-transform/1.0.0/whistler-transform-1.0.0.json"
+  jar_binary_path  = "gs://${local.bucket}/packages/healthcare-mapping-transform/1.0.0/whistler-transform-1.0.0.jar"
+}
+```
+
 {{template "schema" .}}

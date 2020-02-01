@@ -40,7 +40,7 @@ func resourceGCSArtifact() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:        schema.TypeString,
-				Computed:    true,
+				Required:    true,
 				ForceNew:    true,
 				Description: "The name of the artifact.",
 			},
@@ -53,133 +53,79 @@ func resourceGCSArtifact() *schema.Resource {
 					return defaultNamespace, nil
 				},
 			},
-			"bucket_path": {
+			// Technically, we could omit the version in the API call because CDAP will infer the
+			// version from the jar. However, forcing the user to specify the version makes dealing
+			// with the resource easier because other API calls require it.
+			"version": {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "Path to GCS bucket object containing the spec, JAR and JSON.",
+				Description: "The version of the artifact. Must match the version in the JAR manifest.",
 			},
-			"version": {
+			"jar_binary_path": {
 				Type:        schema.TypeString,
-				Computed:    true,
+				Required:    true,
 				ForceNew:    true,
-				Description: "The version of the artifact.",
+				Description: "The GCS path to the JAR binary for the artifact.",
+			},
+			"json_config_path": {
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The GCS path to the JSON config of the artifact.",
 			},
 		},
 	}
-}
-
-type artifactSpec struct {
-	Actions []*action `json:"actions"`
-}
-type action struct {
-	Type string `json:"type"`
-	Args []*struct {
-		Name  string `json:"name"`
-		Value string `json:"value"`
-	} `json:"arguments"`
 }
 
 func resourceGCSArtifactCreate(d *schema.ResourceData, m interface{}) error {
 	ctx := context.Background()
 	config := m.(*Config)
 
-	// matches is in the form [matched substring, bucket name, object name].
-	matches := bucketPathRE.FindStringSubmatch(d.Get("bucket_path").(string))
-	if len(matches) != 3 {
-		return fmt.Errorf("unexpected bucket path: got %q submatches, want 3", len(matches))
-	}
-
-	bucketName, objectPath := matches[1], matches[2]
-	bucket := config.storageClient.Bucket(bucketName)
-	data, err := loadDataFromGCS(ctx, bucket, objectPath)
+	a, err := loadGCSArtifact(ctx, d, config.storageClient)
 	if err != nil {
 		return err
 	}
 
-	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", data.name)
-
-	if err := uploadJar(config.client, addr, data); err != nil {
-		return err
-	}
-	if err := uploadProps(config.client, addr, data); err != nil {
+	if err := uploadArtifact(config, d, a); err != nil {
 		return err
 	}
 
-	d.Set("name", data.name)
-	d.Set("version", data.version)
-	d.SetId(data.name)
+	d.SetId(a.name)
 	return nil
 }
 
-func loadDataFromGCS(ctx context.Context, bucket *storage.BucketHandle, objectPath string) (*artifactData, error) {
-	specObj := bucket.Object(urlJoin(objectPath, "spec.json"))
-	b, err := readObject(ctx, specObj)
+func loadGCSArtifact(ctx context.Context, d *schema.ResourceData, storageClient *storage.Client) (*artifact, error) {
+	jar, err := readObject(ctx, storageClient, d.Get("jar_binary_path").(string))
 	if err != nil {
 		return nil, err
 	}
 
-	spec := new(artifactSpec)
-	if err := json.Unmarshal(b, spec); err != nil {
+	confb, err := readObject(ctx, storageClient, d.Get("json_config_path").(string))
+	if err != nil {
+		return nil, err
+	}
+	conf := new(artifactConfig)
+	if err := json.Unmarshal(confb, conf); err != nil {
 		return nil, err
 	}
 
-	if len(spec.Actions) != 1 {
-		return nil, fmt.Errorf("only 1 action is currently supported, got %v", len(spec.Actions))
-	}
-	action := spec.Actions[0]
-	if got, want := action.Type, "one_step_deploy_plugin"; got != want {
-		return nil, fmt.Errorf("only action of type %q is currently supported, got %q", want, got)
-	}
-	return loadDataFromAction(ctx, bucket, objectPath, action)
+	return &artifact{
+		name:    d.Get("name").(string),
+		version: d.Get("version").(string),
+		jar:     jar,
+		config:  conf,
+	}, nil
 }
 
-func loadDataFromAction(ctx context.Context, bucket *storage.BucketHandle, objectPath string, action *action) (*artifactData, error) {
-	wantArgs := map[string]bool{
-		"name":    true,
-		"version": true,
-		"config":  true,
-		"jar":     true,
+func readObject(ctx context.Context, storageClient *storage.Client, path string) ([]byte, error) {
+	// matches is in the form [matched substring, bucket name, object name].
+	matches := bucketPathRE.FindStringSubmatch(path)
+	if len(matches) != 3 {
+		return nil, fmt.Errorf("unexpected bucket path: got %q submatches, want 3", len(matches))
 	}
-
-	data := &artifactData{}
-	for _, arg := range action.Args {
-		switch arg.Name {
-		case "name":
-			delete(wantArgs, "name")
-			data.name = arg.Value
-		case "version":
-			delete(wantArgs, "version")
-			data.version = arg.Value
-		case "config":
-			delete(wantArgs, "config")
-			confObj := bucket.Object(urlJoin(objectPath, arg.Value))
-			b, err := readObject(ctx, confObj)
-			if err != nil {
-				return nil, err
-			}
-			data.config = new(artifactConfig)
-			if err := json.Unmarshal(b, data.config); err != nil {
-				return nil, err
-			}
-		case "jar":
-			delete(wantArgs, "jar")
-			jarObj := bucket.Object(urlJoin(objectPath, arg.Value))
-			b, err := readObject(ctx, jarObj)
-			if err != nil {
-				return nil, err
-			}
-			data.jar = b
-		}
-	}
-
-	if len(wantArgs) != 0 {
-		return nil, fmt.Errorf("failed to find artifact fields %v", wantArgs)
-	}
-	return data, nil
-}
-
-func readObject(ctx context.Context, obj *storage.ObjectHandle) ([]byte, error) {
+	bucketName, objectPath := matches[1], matches[2]
+	obj := storageClient.Bucket(bucketName).Object(objectPath)
 	r, err := obj.NewReader(ctx)
 	if err != nil {
 		return nil, err

@@ -24,6 +24,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
+// resourceLocalArtifact supports deploying an artifact by providing a local filepath.
+// We need to use references like GCS or filepaths to avoid needing to pass and
+// store the entire JAR's contents as a string.
 func resourceLocalArtifact() *schema.Resource {
 	return &schema.Resource{
 		Create: resourceLocalArtifactCreate,
@@ -60,16 +63,28 @@ func resourceLocalArtifact() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "The path to the JAR binary for the artifact.",
+				Description: "The local path to the JAR binary for the artifact.",
 			},
 			"json_config_path": {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "THe path to the JSON config of the artifact.",
+				Description: "The local path to the JSON config of the artifact.",
 			},
 		},
 	}
+}
+
+type artifact struct {
+	name    string
+	version string
+	config  *artifactConfig
+	jar     []byte
+}
+
+type artifactConfig struct {
+	Properties map[string]string `json:"properties"`
+	Parents    []string          `json:"parents"`
 }
 
 func resourceLocalArtifactCreate(d *schema.ResourceData, m interface{}) error {
@@ -78,38 +93,47 @@ func resourceLocalArtifactCreate(d *schema.ResourceData, m interface{}) error {
 	// management to account for the facdt that setting properties may fail
 	// because uploading a jar can occur multiple times without error.
 	config := m.(*Config)
-	data, err := initArtifactData(d)
+	a, err := loadLocalArtifact(d)
 	if err != nil {
 		return err
 	}
-	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", data.name)
-	if err := uploadJar(config.client, addr, data); err != nil {
+	if err := uploadArtifact(config, d, a); err != nil {
 		return err
 	}
-	if err := uploadProps(config.client, addr, data); err != nil {
-		return err
-	}
-	d.SetId(data.name)
+	d.SetId(a.name)
 	return nil
 }
 
-func uploadJar(client *http.Client, addr string, d *artifactData) error {
-	req, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(d.jar))
+func uploadArtifact(config *Config, rd *schema.ResourceData, a *artifact) error {
+	addr := urlJoin(config.host, "/v3/namespaces", rd.Get("namespace").(string), "/artifacts", a.name)
+
+	if err := uploadJar(config.client, addr, a); err != nil {
+		return err
+	}
+	if err := uploadProps(config.client, addr, a); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func uploadJar(client *http.Client, addr string, a *artifact) error {
+	req, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(a.jar))
 	if err != nil {
 		return err
 	}
 	req.Header = map[string][]string{}
-	req.Header.Add("Artifact-Version", d.version)
-	req.Header.Add("Artifact-Extends", strings.Join(d.config.Parents, "/"))
+	req.Header.Add("Artifact-Version", a.version)
+	req.Header.Add("Artifact-Extends", strings.Join(a.config.Parents, "/"))
 	if _, err := httpCall(client, req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func uploadProps(client *http.Client, artifactAddr string, d *artifactData) error {
-	addr := urlJoin(artifactAddr, "/versions", d.version, "/properties")
-	b, err := json.Marshal(d.config.Properties)
+func uploadProps(client *http.Client, artifactAddr string, a *artifact) error {
+	addr := urlJoin(artifactAddr, "/versions", a.version, "/properties")
+	b, err := json.Marshal(a.config.Properties)
 	if err != nil {
 		return err
 	}
@@ -124,46 +148,27 @@ func uploadProps(client *http.Client, artifactAddr string, d *artifactData) erro
 	return nil
 }
 
-type artifactData struct {
-	name    string
-	version string
-	config  *artifactConfig
-	jar     []byte
-}
-
-func initArtifactData(d *schema.ResourceData) (*artifactData, error) {
+func loadLocalArtifact(d *schema.ResourceData) (*artifact, error) {
 	jar, err := ioutil.ReadFile(d.Get("jar_binary_path").(string))
 	if err != nil {
 		return nil, err
 	}
-	ac, err := readArtifactConfig(d.Get("json_config_path").(string))
+
+	confb, err := ioutil.ReadFile(d.Get("json_config_path").(string))
 	if err != nil {
 		return nil, err
 	}
-	name := d.Get("name").(string)
-	return &artifactData{
-		name:    name,
+	conf := new(artifactConfig)
+	if err := json.Unmarshal(confb, conf); err != nil {
+		return nil, err
+	}
+
+	return &artifact{
+		name:    d.Get("name").(string),
 		version: d.Get("version").(string),
-		config:  ac,
+		config:  conf,
 		jar:     jar,
 	}, nil
-}
-
-type artifactConfig struct {
-	Properties map[string]string `json:"properties"`
-	Parents    []string          `json:"parents"`
-}
-
-func readArtifactConfig(fileName string) (*artifactConfig, error) {
-	b, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-	var c artifactConfig
-	if err := json.Unmarshal(b, &c); err != nil {
-		return nil, err
-	}
-	return &c, nil
 }
 
 func resourceLocalArtifactRead(d *schema.ResourceData, m interface{}) error {

@@ -5,12 +5,16 @@
 
 The following fields are supported:
 
-* bucket_path
+* jar_binary_path
   (Required):
-  Path to GCS bucket object containing the spec, JAR and JSON.
+  The GCS path to the JAR binary for the artifact.
+
+* json_config_path
+  (Required):
+  The GCS path to the JSON config of the artifact.
 
 * name
-  (Computed):
+  (Required):
   The name of the artifact.
 
 * namespace
@@ -18,6 +22,6 @@ The following fields are supported:
   The name of the namespace in which this resource belongs. If not provided, the default namespace is used.
 
 * version
-  (Computed):
-  The version of the artifact.
+  (Required):
+  The version of the artifact. Must match the version in the JAR manifest.
 

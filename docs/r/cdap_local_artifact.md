@@ -7,11 +7,11 @@ The following fields are supported:
 
 * jar_binary_path
   (Required):
-  The path to the JAR binary for the artifact.
+  The local path to the JAR binary for the artifact.
 
 * json_config_path
   (Required):
-  THe path to the JSON config of the artifact.
+  The local path to the JSON config of the artifact.
 
 * name
   (Required):

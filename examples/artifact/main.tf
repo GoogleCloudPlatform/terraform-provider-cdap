@@ -21,6 +21,8 @@ resource "google_data_fusion_instance" "instance" {
   region = "us-central1"
   type = "BASIC"
   project = "example-project"
+
+  # Use Healthcare Hub.
   options = {
     "market.base.url": "https://storage.googleapis.com/${local.hub_bucket}"
   }
@@ -35,13 +37,16 @@ provider "cdap" {
 
 # Option 1: Path in GCS bucket containing the spec, JAR and JSON config.
 resource "cdap_gcs_artifact" "gcs_whistler_1_0_0" {
-  bucket_path = "gs://${local.hub_bucket}/packages/healthcare-mapping-transform/1.0.0"
+  name = "whistler-transform"
+  version = "1.0.0"
+  json_config_path = "gs://${local.hub_bucket}/packages/healthcare-mapping-transform/1.0.0/whistler-transform-1.0.0.json"
+  jar_binary_path = "gs://${local.hub_bucket}/packages/healthcare-mapping-transform/1.0.0/whistler-transform-1.0.0.jar"
 }
 
 # Option 2: Download or compile JAR and JSON config and pass as local files.
 resource "cdap_local_artifact" "local_whistler_1_0_0" {
   name = "whistler-transform"
   version = "1.0.0"
-  json_config)path = "./TODO/whistler-transform-1.0.0.json"
+  json_config_path = "./TODO/whistler-transform-1.0.0.json"
   jar_binary_path = "./TODO/whistler-transform-1.0.0.jar"
 }

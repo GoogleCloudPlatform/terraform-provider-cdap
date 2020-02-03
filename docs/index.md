@@ -5,6 +5,8 @@
    [releases page](https://github.com/GoogleCloudPlatform/terraform-provider-cdap/releases)
    page.
 
+-  Rename the provider binary to `terraform-provider-cdap`.
+
 -  Move the binary to a location your Terraform configs can
    [find it](https://www.terraform.io/docs/configuration/providers.html#third-party-plugins).
 

@@ -118,8 +118,9 @@ type profile struct {
 }
 
 type provisioner struct {
-	Name       string      `json:"name"`
-	Properties []*property `json:"properties"`
+	Name              string      `json:"name"`
+	Properties        []*property `json:"properties"`
+	ClusterProperties []*property `clusterProperties`
 }
 
 type property struct {
@@ -142,6 +143,14 @@ func resourceProfileCreate(d *schema.ResourceData, m interface{}) error {
 		Name: rawProv["name"].(string),
 	}
 	for _, rawProp := range rawProv["properties"].([]interface{}) {
+		rawPropMap := rawProp.(map[string]interface{})
+		prov.Properties = append(prov.Properties, &property{
+			Name:       rawPropMap["name"].(string),
+			Value:      rawPropMap["value"].(string),
+			IsEditable: rawPropMap["is_editable"].(bool),
+		})
+	}
+	for _, rawProp := range rawProv["clusterProperties"].([]interface{}) {
 		rawPropMap := rawProp.(map[string]interface{})
 		prov.Properties = append(prov.Properties, &property{
 			Name:       rawPropMap["name"].(string),

@@ -10,16 +10,10 @@ infra-as-code manner.
 This is a
 [community maintained provider](https://www.terraform.io/docs/providers/type/community-index.html) and not an official Google or Hashicorp product.
 
-
 ## Documentation
 
 Website: https://googlecloudplatform.github.io/terraform-provider-cdap/
 
-
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
-
-## Bugs & Feature Requests
-
-Please file issues.

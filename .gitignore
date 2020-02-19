@@ -1,2 +1,3 @@
-# Ignore default build output
+# Built binaries
 terraform-provider-cdap
+tools/generate_docs/generate_docs

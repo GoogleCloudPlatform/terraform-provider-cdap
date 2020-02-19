@@ -13,14 +13,13 @@ This is a
 
 ## Documentation
 
-* Website: https://googlecloudplatform.github.io/terraform-provider-cdap/
+Website: https://googlecloudplatform.github.io/terraform-provider-cdap/
 
 
-## Development
+## Contributing
 
--   Build the provider by running `go build` from the root directory.
-
+See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## Bugs & Feature Requests
 
-Please file issues in Github.
+Please file issues.

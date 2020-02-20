@@ -92,6 +92,6 @@ func healthcheck(c *Config) error {
 	if err != nil {
 		return err
 	}
-	_, err = httpCall(c.client, req)
+	_, err = httpCall(c.httpClient, req)
 	return err
 }

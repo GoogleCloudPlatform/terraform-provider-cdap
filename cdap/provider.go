@@ -39,7 +39,7 @@ func Provider() *schema.Provider {
 			},
 			"token": &schema.Schema{
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				Description: "The OAuth token to use for all http calls to the instance.",
 			},
 		},
@@ -64,10 +64,14 @@ type Config struct {
 
 func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	ctx := context.Background()
-	client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: d.Get("token").(string),
-		TokenType:   "Bearer",
-	}))
+
+	client := &http.Client{}
+	if token, ok := d.GetOk("token"); ok {
+		client = oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
+			AccessToken: token.(string),
+			TokenType:   "Bearer",
+		}))
+	}
 	client.Timeout = 30 * time.Minute
 
 	storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly))

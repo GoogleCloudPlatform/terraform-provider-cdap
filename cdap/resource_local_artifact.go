@@ -107,10 +107,10 @@ func resourceLocalArtifactCreate(d *schema.ResourceData, m interface{}) error {
 func uploadArtifact(config *Config, rd *schema.ResourceData, a *artifact) error {
 	addr := urlJoin(config.host, "/v3/namespaces", rd.Get("namespace").(string), "/artifacts", a.name)
 
-	if err := uploadJar(config.client, addr, a); err != nil {
+	if err := uploadJar(config.httpClient, addr, a); err != nil {
 		return err
 	}
-	if err := uploadProps(config.client, addr, a); err != nil {
+	if err := uploadProps(config.httpClient, addr, a); err != nil {
 		return err
 	}
 
@@ -184,7 +184,7 @@ func resourceLocalArtifactDelete(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-	_, err = httpCall(config.client, req)
+	_, err = httpCall(config.httpClient, req)
 	return err
 }
 
@@ -198,7 +198,7 @@ func resourceLocalArtifactExists(d *schema.ResourceData, m interface{}) (bool, e
 		return false, err
 	}
 
-	b, err := httpCall(config.client, req)
+	b, err := httpCall(config.httpClient, req)
 	if err != nil {
 		return false, err
 	}

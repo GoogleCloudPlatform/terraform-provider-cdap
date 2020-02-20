@@ -58,21 +58,21 @@ func Provider() *schema.Provider {
 // Config provides service configuration for service clients.
 type Config struct {
 	host          string
-	client        *http.Client // TODO: rename to httpClient
+	httpClient    *http.Client
 	storageClient *storage.Client
 }
 
 func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	ctx := context.Background()
 
-	client := &http.Client{}
+	httpClient := &http.Client{}
 	if token, ok := d.GetOk("token"); ok {
-		client = oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
+		httpClient = oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
 			AccessToken: token.(string),
 			TokenType:   "Bearer",
 		}))
 	}
-	client.Timeout = 30 * time.Minute
+	httpClient.Timeout = 30 * time.Minute
 
 	storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly))
 	if err != nil {
@@ -81,7 +81,7 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 
 	return &Config{
 		host:          d.Get("host").(string),
-		client:        client,
+		httpClient:    httpClient,
 		storageClient: storageClient,
 	}, nil
 }

@@ -67,7 +67,7 @@ func resourceNamespacePreferencesCreate(d *schema.ResourceData, m interface{}) e
 		return err
 	}
 
-	if _, err := httpCall(config.client, req); err != nil {
+	if _, err := httpCall(config.httpClient, req); err != nil {
 		return err
 	}
 
@@ -87,6 +87,6 @@ func resourceNamespacePreferencesDelete(d *schema.ResourceData, m interface{}) e
 	if err != nil {
 		return err
 	}
-	_, err = httpCall(config.client, req)
+	_, err = httpCall(config.httpClient, req)
 	return err
 }

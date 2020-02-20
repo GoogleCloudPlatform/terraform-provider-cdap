@@ -17,6 +17,7 @@ package cdap
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -75,9 +76,22 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		return nil, err
 	}
 
-	return &Config{
+	c := &Config{
 		host:          d.Get("host").(string),
 		client:        client,
 		storageClient: storageClient,
-	}, nil
+	}
+	if err := healthcheck(c); err != nil {
+		return nil, fmt.Errorf("failed health check: %q, are the host and credentials valid?", err)
+	}
+	return c, nil
+}
+
+func healthcheck(c *Config) error {
+	req, err := http.NewRequest(http.MethodDelete, c.host, nil)
+	if err != nil {
+		return err
+	}
+	_, err = httpCall(c.client, req)
+	return err
 }

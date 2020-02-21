@@ -78,6 +78,15 @@ func resourceNamespaceDelete(d *schema.ResourceData, m interface{}) error {
 func resourceNamespaceExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	config := m.(*Config)
 	name := d.Get("name").(string)
+	return namespaceExists(config, name)
+}
+
+func namespaceExists(config *Config, name string) (bool, error) {
+	// Default namespace should always exist.
+	if name == defaultNamespace {
+		return true, nil
+	}
+
 	addr := urlJoin(config.host, "/v3/namespaces")
 
 	req, err := http.NewRequest(http.MethodGet, addr, nil)

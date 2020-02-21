@@ -17,6 +17,7 @@ package cdap
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -153,7 +154,15 @@ func resourceApplicationDelete(d *schema.ResourceData, m interface{}) error {
 func resourceApplicationExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/apps")
+
+	namespace := d.Get("namespace").(string)
+	if exists, err := namespaceExists(config, namespace); err != nil {
+		return false, fmt.Errorf("failed to check for existence of namespace %q: %v", namespace, err)
+	} else if !exists {
+		return false, nil
+	}
+
+	addr := urlJoin(config.host, "/v3/namespaces", namespace, "/apps")
 	req, err := http.NewRequest(http.MethodGet, addr, nil)
 	if err != nil {
 		return false, err

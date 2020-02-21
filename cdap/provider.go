@@ -107,7 +107,7 @@ func healthcheck(c *Config) error {
 	// So check for a valid return value by unmarshalling the JSON.
 	var v interface{}
 	if err := json.Unmarshal(b, &v); err != nil {
-		return fmt.Errorf("failed to unmarshal namespaces from body: %v\n%v", err, string(b))
+		return fmt.Errorf("failed to unmarshal response: %v\n%v", err, string(b))
 	}
 	return nil
 }

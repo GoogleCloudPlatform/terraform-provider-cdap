@@ -28,6 +28,7 @@ func resourceNamespacePreferences() *schema.Resource {
 		Create: resourceNamespacePreferencesCreate,
 		Read:   resourceNamespacePreferencesRead,
 		Delete: resourceNamespacePreferencesDelete,
+		Exists: resourceNamespacePreferencesExist,
 
 		Schema: map[string]*schema.Schema{
 			"namespace": {

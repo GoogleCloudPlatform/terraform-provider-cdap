@@ -17,6 +17,7 @@ package cdap
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -73,7 +74,7 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 			TokenType:   "Bearer",
 		}))
 	}
-	httpClient.Timeout = 30 * time.Minute
+	httpClient.Timeout = 5 * time.Minute
 
 	storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly))
 	if err != nil {
@@ -86,16 +87,27 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		storageClient: storageClient,
 	}
 	if err := healthcheck(c); err != nil {
-		return nil, fmt.Errorf("failed health check: %q, are the host and credentials valid?", err)
+		return nil, fmt.Errorf("failed health check, possibly due to an invalid host or credentials: %v", err)
 	}
 	return c, nil
 }
 
 func healthcheck(c *Config) error {
-	req, err := http.NewRequest(http.MethodDelete, c.host, nil)
+	addr := urlJoin(c.host, "/v3/namespaces")
+	req, err := http.NewRequest(http.MethodGet, addr, nil)
 	if err != nil {
 		return err
 	}
-	_, err = httpCall(c.httpClient, req)
-	return err
+	b, err := httpCall(c.httpClient, req)
+	if err != nil {
+		return err
+	}
+
+	// Invalid credentials currently result in a redirect to sign in page instead of an error.
+	// So check for a valid return value by unmarshalling the JSON.
+	var v interface{}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return fmt.Errorf("failed to unmarshal namespaces from body: %v\n%v", err, string(b))
+	}
+	return nil
 }

@@ -21,3 +21,13 @@ All submissions, including submissions by project members, require review. We
 use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
+
+## Development
+
+-   Build the provider by running `go build` from the root directory to test
+    your changes locally.
+-   Move the provider to a directory containing your Terraform configs that
+    exercise the right code path.
+-   Run `terraform init` and `terraform apply` to use your local provider.
+-  If you made any documentation changes, remember to generate run the
+   [generate_docs](./tools/generate_docs) tool.

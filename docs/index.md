@@ -5,7 +5,12 @@
    [releases page](https://github.com/GoogleCloudPlatform/terraform-provider-cdap/releases)
    page.
 
--  Rename the provider binary to `terraform-provider-cdap`.
+-  Rename the binary to match the
+  [pattern](https://www.terraform.io/docs/configuration/providers.html#plugin-names-and-versions)
+  `terraform-provider-cdap-vX.Y.Z`).
+
+-  Run `chmod u+x ./terraform-provider-cdap-vX.Y.Z` to make the binary
+   executable.
 
 -  Move the binary to a location your Terraform configs can
    [find it](https://www.terraform.io/docs/configuration/providers.html#third-party-plugins).

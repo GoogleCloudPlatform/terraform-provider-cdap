@@ -89,7 +89,8 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	}
 
 	if err := healthcheck(c); err != nil {
-		log.Printf("failed health check, trying again... %v", err)
+		log.Printf("failed health check, trying again after 5 seconds... %v", err)
+		time.Sleep(5 * time.Second)
 		if err := healthcheck(c); err != nil {
 			return nil, fmt.Errorf("failed health check, possibly due to an invalid host or credentials: %v", err)
 		}

@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -86,8 +87,12 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		httpClient:    httpClient,
 		storageClient: storageClient,
 	}
+
 	if err := healthcheck(c); err != nil {
-		return nil, fmt.Errorf("failed health check, possibly due to an invalid host or credentials: %v", err)
+		log.Printf("failed health check, trying again... %v", err)
+		if err := healthcheck(c); err != nil {
+			return nil, fmt.Errorf("failed health check, possibly due to an invalid host or credentials: %v", err)
+		}
 	}
 	return c, nil
 }

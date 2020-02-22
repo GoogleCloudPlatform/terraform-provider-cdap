@@ -1,6 +1,6 @@
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
 The CDAP provider is used to configure your
-[CDAP](https://docs.cask.co/cdap/develop/en/index.html) infrastructure.
+[CDAP](https://docs.cdap.io/cdap/current/en/index.html) infrastructure.
 
 ## Installation
 

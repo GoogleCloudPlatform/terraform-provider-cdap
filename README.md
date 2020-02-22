@@ -12,7 +12,7 @@ This is a
 
 ## Documentation
 
-Website: https://googlecloudplatform.github.io/terraform-provider-cdap/
+Website: https://googlecloudplatform.github.io/terraform-provider-cdap
 
 ## Contributing
 

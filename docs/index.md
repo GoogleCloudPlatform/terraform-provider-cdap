@@ -1,4 +1,7 @@
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
+The CDAP provider is used to configure your
+[CDAP](https://docs.cask.co/cdap/develop/en/index.html) infrastructure.
+
 ## Installation
 
 -  Download the provider binary from the
@@ -45,7 +48,7 @@ The following fields are supported:
   The address of the CDAP instance.
 
 * token
-  (Required):
+  (Optional):
   The OAuth token to use for all http calls to the instance.
 
 

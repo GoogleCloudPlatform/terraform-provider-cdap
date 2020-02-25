@@ -17,6 +17,9 @@ package cdap
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -39,7 +42,7 @@ func Provider() *schema.Provider {
 			},
 			"token": &schema.Schema{
 				Type:        schema.TypeString,
-				Required:    true,
+				Optional:    true,
 				Description: "The OAuth token to use for all http calls to the instance.",
 			},
 		},
@@ -58,26 +61,59 @@ func Provider() *schema.Provider {
 // Config provides service configuration for service clients.
 type Config struct {
 	host          string
-	client        *http.Client // TODO: rename to httpClient
+	httpClient    *http.Client
 	storageClient *storage.Client
 }
 
 func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	ctx := context.Background()
-	client := oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
-		AccessToken: d.Get("token").(string),
-		TokenType:   "Bearer",
-	}))
-	client.Timeout = 30 * time.Minute
+
+	httpClient := &http.Client{}
+	if token, ok := d.GetOk("token"); ok {
+		httpClient = oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
+			AccessToken: token.(string),
+			TokenType:   "Bearer",
+		}))
+	}
+	httpClient.Timeout = 5 * time.Minute
 
 	storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly))
 	if err != nil {
 		return nil, err
 	}
 
-	return &Config{
+	c := &Config{
 		host:          d.Get("host").(string),
-		client:        client,
+		httpClient:    httpClient,
 		storageClient: storageClient,
-	}, nil
+	}
+
+	if err := healthcheck(c); err != nil {
+		log.Printf("failed health check, trying again after 5 seconds: %v", err)
+		time.Sleep(5 * time.Second)
+		if err := healthcheck(c); err != nil {
+			return nil, fmt.Errorf("failed health check, possibly due to an invalid host or credentials: %v", err)
+		}
+	}
+	return c, nil
+}
+
+func healthcheck(c *Config) error {
+	addr := urlJoin(c.host, "/v3/namespaces")
+	req, err := http.NewRequest(http.MethodGet, addr, nil)
+	if err != nil {
+		return err
+	}
+	b, err := httpCall(c.httpClient, req)
+	if err != nil {
+		return err
+	}
+
+	// Invalid credentials currently result in a redirect to sign in page instead of an error.
+	// So check for a valid return value by unmarshalling the JSON.
+	var v interface{}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %v\n%v", err, string(b))
+	}
+	return nil
 }

@@ -1,11 +1,19 @@
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
+The CDAP provider is used to configure your
+[CDAP](https://docs.cdap.io/cdap/current/en/index.html) infrastructure.
+
 ## Installation
 
 -  Download the provider binary from the
    [releases page](https://github.com/GoogleCloudPlatform/terraform-provider-cdap/releases)
    page.
 
--  Rename the provider binary to `terraform-provider-cdap`.
+-  Rename the binary to match the
+  [pattern](https://www.terraform.io/docs/configuration/providers.html#plugin-names-and-versions)
+  `terraform-provider-cdap-vX.Y.Z`).
+
+-  Run `chmod u+x ./terraform-provider-cdap-vX.Y.Z` to make the binary
+   executable.
 
 -  Move the binary to a location your Terraform configs can
    [find it](https://www.terraform.io/docs/configuration/providers.html#third-party-plugins).
@@ -40,7 +48,7 @@ The following fields are supported:
   The address of the CDAP instance.
 
 * token
-  (Required):
+  (Optional):
   The OAuth token to use for all http calls to the instance.
 
 

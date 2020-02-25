@@ -169,7 +169,7 @@ func resourceProfileCreate(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-	if _, err := httpCall(config.client, req); err != nil {
+	if _, err := httpCall(config.httpClient, req); err != nil {
 		return err
 	}
 
@@ -192,7 +192,7 @@ func resourceProfileDelete(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-	if _, err := httpCall(config.client, req); err != nil {
+	if _, err := httpCall(config.httpClient, req); err != nil {
 		return err
 	}
 
@@ -200,7 +200,7 @@ func resourceProfileDelete(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-	_, err = httpCall(config.client, req)
+	_, err = httpCall(config.httpClient, req)
 	return err
 }
 
@@ -214,7 +214,7 @@ func resourceProfileExists(d *schema.ResourceData, m interface{}) (bool, error) 
 		return false, err
 	}
 
-	b, err := httpCall(config.client, req)
+	b, err := httpCall(config.httpClient, req)
 	if err != nil {
 		return false, err
 	}

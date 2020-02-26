@@ -8,7 +8,7 @@ elements as well as all resources.
 
 To run the generator (from the root directory):
 
-```
-$ go build ./tools/generate_docs
-$ ./generate_docs --output_dir="./docs" --template_dir=tools/generate_docs/templates
+```bash
+go build ./tools/generate_docs
+./generate_docs --output_dir="./docs" --template_dir=tools/generate_docs/templates
 ```

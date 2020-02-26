@@ -72,7 +72,7 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 			TokenType:   "Bearer",
 		}))
 	}
-	httpClient.Timeout = 30 * time.Minute
+	httpClient.Timeout = 5 * time.Minute
 
 	storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly))
 	if err != nil {

@@ -24,10 +24,11 @@ information on using pull requests.
 
 ## Development
 
--   Build the provider by running `go build` from the root directory to test
-    your changes locally.
--   Move the provider to a directory containing your Terraform configs that
-    exercise the right code path.
--   Run `terraform init` and `terraform apply` to use your local provider.
--  If you made any documentation changes, remember to generate run the
+- Fetch the dependencies with `go get`
+- Build the provider by running `go build` from the root directory to test
+  your changes locally.
+- Move the provider to a directory containing your Terraform configs that
+  exercise the right code path.
+- Run `terraform init` and `terraform apply` to use your local provider.
+- If you made any documentation changes, remember to generate run the
    [generate_docs](./tools/generate_docs) tool.

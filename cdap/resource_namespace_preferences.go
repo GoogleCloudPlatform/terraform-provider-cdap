@@ -28,6 +28,7 @@ func resourceNamespacePreferences() *schema.Resource {
 		Create: wrap(checkHealth, resourceNamespacePreferencesCreate),
 		Read:   resourceNamespacePreferencesRead,
 		Delete: resourceNamespacePreferencesDelete,
+		Exists: resourceNamespacePreferencesExist,
 
 		Schema: map[string]*schema.Schema{
 			"namespace": {
@@ -89,4 +90,10 @@ func resourceNamespacePreferencesDelete(d *schema.ResourceData, m interface{}) e
 	}
 	_, err = httpCall(config.httpClient, req)
 	return err
+}
+
+func resourceNamespacePreferencesExist(d *schema.ResourceData, m interface{}) (bool, error) {
+	config := m.(*Config)
+	namespace := d.Get("namespace").(string)
+	return namespaceExists(config, namespace)
 }

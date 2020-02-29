@@ -24,7 +24,7 @@ import (
 // https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/namespace.html
 func resourceNamespace() *schema.Resource {
 	return &schema.Resource{
-		Create: wrap(checkHealth, resourceNamespaceCreate),
+		Create: chain(checkHealth, resourceNamespaceCreate),
 		Read:   resourceNamespaceRead,
 		Delete: resourceNamespaceDelete,
 		Exists: resourceNamespaceExists,

@@ -15,17 +15,14 @@
 package cdap
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
-func wrap(fs ...schema.CreateFunc) schema.CreateFunc {
+func chain(fs ...schema.CreateFunc) schema.CreateFunc {
 	return schema.CreateFunc(func(d *schema.ResourceData, m interface{}) error {
 		for _, f := range fs {
 			if err := f(d, m); err != nil {
@@ -36,50 +33,27 @@ func wrap(fs ...schema.CreateFunc) schema.CreateFunc {
 	})
 }
 
+var retryErrCodes = map[int]bool{502: true, 504: true}
+
 // TODO(umairidris): Remove this once CDF create call returns only after all services are running.
 func checkHealth(_ *schema.ResourceData, m interface{}) error {
-	c := m.(*Config)
-
-	var bad []string
-	for i := 0; i < 10; i++ {
-		serviceToStatus, err := getServiceToStatus(c)
-		if err != nil {
-			return err
-		}
-		if len(serviceToStatus) == 0 {
-			return errors.New("found no services on instance")
-		}
-
-		bad = nil
-		for service, status := range serviceToStatus {
-			if status != "OK" {
-				bad = append(bad, service)
-			}
-		}
-		if len(bad) == 0 {
-			log.Printf("Instance is healthy: %v", serviceToStatus)
+	config := m.(*Config)
+	for i := 0; i < 50; i++ {
+		exists, err := artifactExists(config, "cdap-data-pipeline", "default")
+		var e *httpError
+		switch {
+		case exists:
+			log.Println("system artifact exists")
 			return nil
+		case errors.As(err, &e) && retryErrCodes[e.code]:
+			log.Printf("checking for system artifacts got error code %v, retrying after 10 seconds", e.code)
+		case err != nil:
+			log.Printf("failed to check for aritfact existence: %v", err)
+			return err
+		case !exists:
+			log.Println("system artifact not yet loaded, retrying after 10 seconds")
 		}
-		fmt.Printf("Found %v unhealthy services: %v", len(bad), bad)
 		time.Sleep(10 * time.Second)
 	}
-	return fmt.Errorf("found %v unhealthy services: %v", len(bad), bad)
-}
-
-func getServiceToStatus(c *Config) (map[string]string, error) {
-	addr := urlJoin(c.host, "/v3/system/services/status")
-	req, err := http.NewRequest(http.MethodGet, addr, nil)
-	if err != nil {
-		return nil, err
-	}
-	b, err := httpCall(c.httpClient, req)
-	if err != nil {
-		return nil, err
-	}
-
-	var m map[string]string
-	if err := json.Unmarshal(b, &m); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %v\n%v", err, string(b))
-	}
-	return m, nil
+	return errors.New("system artifact failed to come up in 50 tries")
 }

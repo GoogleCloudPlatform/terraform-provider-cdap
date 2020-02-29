@@ -42,15 +42,15 @@ func checkHealth(_ *schema.ResourceData, m interface{}) error {
 		exists, err := artifactExists(config, "cdap-data-pipeline", "default")
 		var e *httpError
 		switch {
-		case exists:
-			log.Println("system artifact exists")
-			return nil
 		case errors.As(err, &e) && retryErrCodes[e.code]:
 			log.Printf("checking for system artifacts got error code %v, retrying after 10 seconds", e.code)
 		case err != nil:
 			log.Printf("failed to check for aritfact existence: %v", err)
 			return err
-		case !exists:
+		case exists:
+			log.Println("system artifact exists")
+			return nil
+		default: // !exists
 			log.Println("system artifact not yet loaded, retrying after 10 seconds")
 		}
 		time.Sleep(10 * time.Second)

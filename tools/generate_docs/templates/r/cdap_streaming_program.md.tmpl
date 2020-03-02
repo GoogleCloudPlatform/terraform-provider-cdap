@@ -1,0 +1,17 @@
+{{template "header" .}}
+
+# Example
+
+```
+resource "cdap_streaming_program" "test" {
+  namespace = "staging"
+  type      = "spark"
+  app       = "HL7v2_to_fhir"
+
+  runtime_arguments = {
+    "system.profile.name" = "hl7-stream-ingest"
+  }
+}
+```
+
+{{template "schema" .}}

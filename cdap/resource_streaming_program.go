@@ -20,6 +20,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 )
 
 // https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/lifecycle.html.
@@ -44,42 +45,33 @@ func resourceStreamingProgram() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "Name of the application being called.",
+				Description: "Name of the application.",
 			},
 			"name": {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "Name of the flow, MapReduce, custom service, Spark, worker, or workflow being called.",
+				Description: "Name of the program.",
+				DefaultFunc: func() (interface{}, error) {
+					return "DataStreamsSparkStreaming", nil
+				},
 			},
 			"type": {
-				Type:        schema.TypeString,
-				Required:    true,
-				ForceNew:    true,
-				Description: "One of flows, mapreduce, services, spark, workers, or workflows.",
+				Type:         schema.TypeString,
+				Required:     true,
+				ForceNew:     true,
+				Description:  "One of flows, mapreduce, services, spark, workers, or workflows.",
+				ValidateFunc: validation.StringInSlice([]string{"flows", "mapreduce", "services", "spark", "workers", "workflows"}, false),
+				DefaultFunc: func() (interface{}, error) {
+					return "spark", nil
+				},
 			},
 			"runtime_arguments": {
-				Type:        schema.TypeList,
+				Type:        schema.TypeMap,
 				Required:    true,
 				ForceNew:    true,
 				Description: "The runtime arguments used to start the program",
-				MaxItems:    1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"key": {
-							Type:        schema.TypeString,
-							Required:    true,
-							ForceNew:    true,
-							Description: "The key for the runtime argument.",
-						},
-						"val": {
-							Type:        schema.TypeString,
-							Required:    true,
-							ForceNew:    true,
-							Description: "The key for the runtime argument.",
-						},
-					},
-				},
+				Elem:        &schema.Schema{Type: schema.TypeString},
 			},
 		},
 	}
@@ -93,12 +85,9 @@ func resourceStreamingProgramCreate(d *schema.ResourceData, m interface{}) error
 		config.host,
 		"/v3/namespaces", d.Get("namespace").(string),
 		"/apps", d.Get("app").(string), d.Get("type").(string),
-		d.Get("name").(string))
+		d.Get("name").(string), "start")
 
 	argsObj := make(map[string]interface{})
-	if err := json.Unmarshal([]byte(d.Get("config").(string)), &argsObj); err != nil {
-		return err
-	}
 
 	b, err := json.Marshal(argsObj)
 	if err != nil {
@@ -130,9 +119,9 @@ func resourceStreamingProgramDelete(d *schema.ResourceData, m interface{}) error
 		config.host,
 		"/v3/namespaces", d.Get("namespace").(string),
 		"/apps", d.Get("app").(string), d.Get("type").(string),
-		name)
+		name, "stop")
 
-	req, err := http.NewRequest(http.MethodDelete, addr, nil)
+	req, err := http.NewRequest(http.MethodPost, addr, nil)
 	if err != nil {
 		return err
 	}
@@ -142,13 +131,12 @@ func resourceStreamingProgramDelete(d *schema.ResourceData, m interface{}) error
 
 func resourceStreamingProgramExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	config := m.(*Config)
-	name := d.Get("name").(string)
 
 	addr := urlJoin(
 		config.host,
 		"/v3/namespaces", d.Get("namespace").(string),
 		"/apps", d.Get("app").(string), d.Get("type").(string),
-		d.Get("name").(string))
+		d.Get("name").(string), "/status")
 
 	req, err := http.NewRequest(http.MethodGet, addr, nil)
 	if err != nil {
@@ -160,20 +148,18 @@ func resourceStreamingProgramExists(d *schema.ResourceData, m interface{}) (bool
 		return false, err
 	}
 
-	type program struct {
+	type ProgramStatus struct {
 		// TODO correct this schema.
-		Name string `json:"name"`
+		Status string `json:"status"`
 	}
 
-	var programs []program
-	if err := json.Unmarshal(b, &programs); err != nil {
+	var program ProgramStatus
+	if err := json.Unmarshal(b, &program); err != nil {
 		return false, err
 	}
 
-	for _, a := range programs {
-		if a.Name == name {
-			return true, nil
-		}
+	if program.Status == "RUNNING" {
+		return true, nil
 	}
 	return false, nil
 }

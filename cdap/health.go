@@ -34,13 +34,14 @@ func chain(fs ...schema.CreateFunc) schema.CreateFunc {
 	})
 }
 
-var retryErrCodes = map[int]bool{502: true, 504: true}
+var retryErrCodes = map[int]bool{400: true, 502: true, 504: true}
 
 // TODO(umairidris): Remove this once CDF create call returns only after all services are running.
 func checkHealth(_ *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	for i := 0; i < 50; i++ {
 		log.Printf("checking system artifact attempt %d", i)
+		time.Sleep(10 * time.Second)
 		exists, err := artifactExists(config, "cdap-data-pipeline", "default")
 		var e *httpError
 		switch {
@@ -54,7 +55,6 @@ func checkHealth(_ *schema.ResourceData, m interface{}) error {
 		default: // !exists
 			log.Println("system artifact not yet loaded, retrying after 10 seconds")
 		}
-		time.Sleep(10 * time.Second)
 	}
 	return errors.New("system artifact failed to come up in 50 tries")
 }

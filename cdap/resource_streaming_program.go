@@ -149,16 +149,15 @@ func resourceStreamingProgramExists(d *schema.ResourceData, m interface{}) (bool
 	}
 
 	type ProgramStatus struct {
-		// TODO correct this schema.
 		Status string `json:"status"`
 	}
 
-	var program ProgramStatus
-	if err := json.Unmarshal(b, &program); err != nil {
+	var p ProgramStatus
+	if err := json.Unmarshal(b, &p); err != nil {
 		return false, err
 	}
 
-	if program.Status == "RUNNING" {
+	if p.Status == "RUNNING" {
 		return true, nil
 	}
 	return false, nil

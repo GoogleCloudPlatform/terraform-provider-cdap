@@ -1,3 +1,4 @@
 # Built binaries
 terraform-provider-cdap
 generate_docs
+!tools/**

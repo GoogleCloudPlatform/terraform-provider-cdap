@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 
@@ -30,7 +31,7 @@ import (
 // store the entire JAR's contents as a string.
 func resourceLocalArtifact() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceLocalArtifactCreate,
+		Create: chain(checkHealth, resourceLocalArtifactCreate),
 		Read:   resourceLocalArtifactRead,
 		Delete: resourceLocalArtifactDelete,
 		Exists: resourceLocalArtifactExists,
@@ -200,6 +201,10 @@ func resourceLocalArtifactExists(d *schema.ResourceData, m interface{}) (bool, e
 		return false, nil
 	}
 
+	return artifactExists(config, name, namespace)
+}
+
+func artifactExists(config *Config, name, namespace string) (bool, error) {
 	addr := urlJoin(config.host, "/v3/namespaces", namespace, "/artifacts")
 
 	req, err := http.NewRequest(http.MethodGet, addr, nil)
@@ -220,6 +225,8 @@ func resourceLocalArtifactExists(d *schema.ResourceData, m interface{}) (bool, e
 	if err := json.Unmarshal(b, &artifacts); err != nil {
 		return false, err
 	}
+
+	log.Printf("got artifacts: %v", artifacts)
 
 	for _, a := range artifacts {
 		if a.Name == name {

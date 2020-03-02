@@ -23,6 +23,15 @@ import (
 	"strings"
 )
 
+type httpError struct {
+	code int
+	body string
+}
+
+func (e *httpError) Error() string {
+	return fmt.Sprintf("%v: %v", e.code, e.body)
+}
+
 func urlJoin(base string, paths ...string) string {
 	p := path.Join(paths...)
 	return fmt.Sprintf("%s/%s", strings.TrimRight(base, "/"), strings.TrimLeft(p, "/"))
@@ -43,7 +52,7 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("%v: %v", resp.Status, string(b))
+		return nil, &httpError{code: resp.StatusCode, body: string(b)}
 	}
 	return b, nil
 }

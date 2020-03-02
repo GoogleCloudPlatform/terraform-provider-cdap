@@ -25,7 +25,7 @@ import (
 // https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/preferences.html
 func resourceNamespacePreferences() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceNamespacePreferencesCreate,
+		Create: chain(checkHealth, resourceNamespacePreferencesCreate),
 		Read:   resourceNamespacePreferencesRead,
 		Delete: resourceNamespacePreferencesDelete,
 		Exists: resourceNamespacePreferencesExist,

@@ -16,6 +16,7 @@ package cdap
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -39,14 +40,14 @@ var retryErrCodes = map[int]bool{502: true, 504: true}
 func checkHealth(_ *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	for i := 0; i < 50; i++ {
+		log.Printf("checking system artifact attempt %d", i)
 		exists, err := artifactExists(config, "cdap-data-pipeline", "default")
 		var e *httpError
 		switch {
 		case errors.As(err, &e) && retryErrCodes[e.code]:
 			log.Printf("checking for system artifacts got error code %v, retrying after 10 seconds", e.code)
 		case err != nil:
-			log.Printf("failed to check for aritfact existence: %v", err)
-			return err
+			return fmt.Errorf("failed to check for aritfact existence: %v", err)
 		case exists:
 			log.Println("system artifact exists")
 			return nil

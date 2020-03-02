@@ -125,12 +125,13 @@ func resourceStreamingProgramCreate(d *schema.ResourceData, m interface{}) error
 			log.Println("program still in STARTING state, waiting 10 seconds.")
 			time.Sleep(10 * time.Second)
 		case "STOPPED":
-			log.Println("program still in STOPPED state, waiting 10 seconds. This may occur when redeploying a pipeline.")
+			log.Println("program still in STOPPED state, waiting 10 seconds. This may occur when redeploying a previously deployed pipeline.")
 			time.Sleep(10 * time.Second)
 		case "RUNNING":
 			log.Println("program successfully reached RUNNING state.")
+			d.SetId(d.Get("app").(string))
 			return nil
-        case "FAILED":
+		case "FAILED":
 			return fmt.Errorf("failed to start program in app: %s in state: %s.", d.Get("app"), p.Status)
 		default:
 			log.Println("program still in STARTING state, waiting 10 seconds.")
@@ -138,7 +139,6 @@ func resourceStreamingProgramCreate(d *schema.ResourceData, m interface{}) error
 		}
 	}
 
-	d.SetId(d.Get("app").(string))
 	return nil
 }
 

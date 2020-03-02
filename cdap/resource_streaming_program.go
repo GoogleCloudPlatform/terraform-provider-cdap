@@ -17,7 +17,10 @@ package cdap
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
@@ -85,7 +88,11 @@ func resourceStreamingProgramCreate(d *schema.ResourceData, m interface{}) error
 		config.host,
 		"/v3/namespaces", d.Get("namespace").(string),
 		"/apps", d.Get("app").(string), d.Get("type").(string),
-		d.Get("name").(string), "start")
+		name)
+	startAddr := urlJoin(
+		addr, "start")
+	statusAddr := urlJoin(
+		addr, "status")
 
 	argsObj := make(map[string]interface{})
 
@@ -94,7 +101,7 @@ func resourceStreamingProgramCreate(d *schema.ResourceData, m interface{}) error
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(b))
+	req, err := http.NewRequest(http.MethodPost, startAddr, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -103,12 +110,67 @@ func resourceStreamingProgramCreate(d *schema.ResourceData, m interface{}) error
 		return err
 	}
 
-	d.SetId(name)
+	// Poll until actually reaches RUNNING state.
+	for {
+		p, err := getProgramStatus(config, statusAddr)
+		if err != nil {
+			return err
+		}
+
+		switch s := p.Status; s {
+		case "PROVISIONING":
+			log.Println("program still in PROVISIONING state, waiting 10 seconds.")
+			time.Sleep(10 * time.Second)
+		case "STARTING":
+			log.Println("program still in STARTING state, waiting 10 seconds.")
+			time.Sleep(10 * time.Second)
+		case "STOPPED":
+			log.Println("program still in STOPPED state, waiting 10 seconds. This may occur when redeploying a pipeline.")
+			time.Sleep(10 * time.Second)
+		case "RUNNING":
+			log.Println("program successfully reached RUNNING state.")
+			return nil
+        case "FAILED":
+			return fmt.Errorf("failed to start program in app: %s in state: %s.", d.Get("app"), p.Status)
+		default:
+			log.Println("program still in STARTING state, waiting 10 seconds.")
+			time.Sleep(10 * time.Second)
+		}
+	}
+
+	d.SetId(d.Get("app").(string))
 	return nil
 }
 
 func resourceStreamingProgramRead(d *schema.ResourceData, m interface{}) error {
 	return nil
+}
+
+func getProgramStatus(config *Config, statusAddr string) (p ProgramStatus, err error) {
+	req, err := http.NewRequest(http.MethodGet, statusAddr, nil)
+	if err != nil {
+		return
+	}
+
+	b, err := httpCall(config.httpClient, req)
+	if err != nil {
+		return
+	}
+
+	if err := json.Unmarshal(b, &p); err != nil {
+		return p, err
+	}
+
+	return p, nil
+}
+
+func stopProgram(config *Config, stopAddr string) error {
+	req, err := http.NewRequest(http.MethodPost, stopAddr, nil)
+	if err != nil {
+		return err
+	}
+	_, err = httpCall(config.httpClient, req)
+	return err
 }
 
 func resourceStreamingProgramDelete(d *schema.ResourceData, m interface{}) error {
@@ -119,14 +181,36 @@ func resourceStreamingProgramDelete(d *schema.ResourceData, m interface{}) error
 		config.host,
 		"/v3/namespaces", d.Get("namespace").(string),
 		"/apps", d.Get("app").(string), d.Get("type").(string),
-		name, "stop")
+		name)
 
-	req, err := http.NewRequest(http.MethodPost, addr, nil)
-	if err != nil {
-		return err
+	// Check status to handle scenarios like a program that is in STOPPING state.
+	statusAddr := urlJoin(
+		addr, "/status")
+	stopAddr := urlJoin(
+		addr, "/stop")
+
+	// Poll until actually reaches STOPPED state.
+	for {
+		p, err := getProgramStatus(config, statusAddr)
+		if err != nil {
+			return err
+		}
+
+		switch s := p.Status; s {
+		case "STOPPED":
+			return nil
+		case "RUNNING":
+			err = stopProgram(config, stopAddr)
+			if err != nil {
+				return err
+			}
+		case "STOPPING":
+			log.Println("program still in STOPPING state, waiting 10 seconds.")
+			time.Sleep(10 * time.Second)
+		default:
+			return fmt.Errorf("cannot stop program in app %s in state: %s", d.Get("app"), p.Status)
+		}
 	}
-	_, err = httpCall(config.httpClient, req)
-	return err
 }
 
 func resourceStreamingProgramExists(d *schema.ResourceData, m interface{}) (bool, error) {
@@ -148,10 +232,6 @@ func resourceStreamingProgramExists(d *schema.ResourceData, m interface{}) (bool
 		return false, err
 	}
 
-	type ProgramStatus struct {
-		Status string `json:"status"`
-	}
-
 	var p ProgramStatus
 	if err := json.Unmarshal(b, &p); err != nil {
 		return false, err
@@ -161,4 +241,8 @@ func resourceStreamingProgramExists(d *schema.ResourceData, m interface{}) (bool
 		return true, nil
 	}
 	return false, nil
+}
+
+type ProgramStatus struct {
+	Status string `json:"status"`
 }

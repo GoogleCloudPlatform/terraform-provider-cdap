@@ -133,7 +133,9 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 	}
 
 	// Poll until actually reaches RUNNING state.
+    // TODO(jaketf) refactor to use Retry https://www.terraform.io/docs/extend/resources/retries-and-customizable-timeouts.html#retry
 	for {
+        // TODO(jaketf) refactor to use ProgramRunStatus and handle all in this enum https://github.com/cdapio/cdap/blob/1d62163faaecb5b888f4bccd0fcf4a8d27bbd549/cdap-proto/src/main/java/io/cdap/cdap/proto/ProgramRunStatus.java
 		p, err := getProgramStatus(config, statusAddr)
 		if err != nil {
 			return err
@@ -176,7 +178,9 @@ func resourceStreamingProgramRunRead(d *schema.ResourceData, m interface{}) erro
 	return nil
 }
 
+
 // Checks if there is a running run for the terraform faux run id
+// TODO(jaketf) refactor this into a getRunByFauxId
 func isFauxRunIdRunning(config *Config, runsAddr string, runId string) (bool, error) {
 	req, err := http.NewRequest(http.MethodGet, runsAddr, nil)
 	if err != nil {
@@ -230,6 +234,7 @@ func isFauxRunIdRunning(config *Config, runsAddr string, runId string) (bool, er
 	return false, nil
 }
 
+// TODO(jaketf) refactor this to use program run status everywhere.
 func getProgramStatus(config *Config, statusAddr string) (p ProgramStatus, err error) {
 	req, err := http.NewRequest(http.MethodGet, statusAddr, nil)
 	if err != nil {
@@ -273,6 +278,8 @@ func resourceStreamingProgramRunDelete(d *schema.ResourceData, m interface{}) er
 	stopAddr := urlJoin(
 		addr, "/stop")
 
+    // TODO(jaketf) refactor to poll program run stataus rather than program  status.
+    // TODO(jaketf) refactor to use Retry https://www.terraform.io/docs/extend/resources/retries-and-customizable-timeouts.html#retry
 	// Poll until actually reaches STOPPED state.
 	for {
 		p, err := getProgramStatus(config, statusAddr)

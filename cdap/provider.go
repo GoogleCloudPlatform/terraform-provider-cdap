@@ -49,7 +49,7 @@ func Provider() *schema.Provider {
 		ConfigureFunc: configureProvider,
 		ResourcesMap: map[string]*schema.Resource{
 			"cdap_application":           resourceApplication(),
-			"cdap_streaming_program":     resourceStreamingProgramRun(),
+			"cdap_streaming_program_run":     resourceStreamingProgramRun(),
 			"cdap_gcs_artifact":          resourceGCSArtifact(),
 			"cdap_local_artifact":        resourceLocalArtifact(),
 			"cdap_namespace":             resourceNamespace(),

@@ -17,13 +17,14 @@ package cdap
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-    "strconv"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
-    "github.com/google/uuid"
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 )
@@ -81,6 +82,15 @@ func resourceStreamingProgramRun() *schema.Resource {
 				Description: "The runtime arguments used to start the program",
 				Elem:        &schema.Schema{Type: schema.TypeString},
 			},
+			"allow_multiple_runs": {
+				Type:        schema.TypeBool,
+				Required:    true,
+				ForceNew:    true,
+				Description: "Specifies if multiple runs of the same program should be allowed",
+				DefaultFunc: func() (interface{}, error) {
+					return false, nil
+				},
+			},
 		},
 	}
 }
@@ -96,16 +106,17 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 		name)
 	startAddr := urlJoin(addr, "start")
 	statusAddr := urlJoin(addr, "status")
+	runsAddr := urlJoin(addr, "runs")
 
-    argsObj := make(map[string]string)
-    // cast map[string]interface{} to map[string]string
-    for k, val := range d.Get("runtime_arguments").(map[string]interface{}){
-        argsObj[k] = val.(string)
-    }
+	argsObj := make(map[string]string)
+	// cast map[string]interface{} to map[string]string
+	for k, val := range d.Get("runtime_arguments").(map[string]interface{}) {
+		argsObj[k] = val.(string)
+	}
 
-    runId, _ := uuid.NewRandom()
-    // This runtime arg will be unused by the pipeline but will allow the provider to associate a run with this resource.
-    argsObj[TF_FAUX_RUN_ID] = runId.String()
+	runId, _ := uuid.NewRandom()
+	// This runtime arg will be unused by the pipeline but will allow the provider to associate a run with this resource.
+	argsObj[TF_FAUX_RUN_ID] = runId.String()
 
 	b, err := json.Marshal(argsObj)
 	if err != nil {
@@ -129,8 +140,8 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 		}
 
 		switch s := p.Status; s {
-		case "PROVISIONING":
-			log.Println("program still in PROVISIONING state, waiting 10 seconds.")
+		case "INITIALIZING":
+			log.Println("program still in INITIALIZING state, waiting 10 seconds.")
 			time.Sleep(10 * time.Second)
 		case "STARTING":
 			log.Println("program still in STARTING state, waiting 10 seconds.")
@@ -139,13 +150,21 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 			log.Println("program still in STOPPED state, waiting 10 seconds. This may occur when redeploying a previously deployed pipeline.")
 			time.Sleep(10 * time.Second)
 		case "RUNNING":
-			log.Println("program successfully reached RUNNING state.")
-			d.SetId(runId.String())
-			return nil
+			running, err := isFauxRunIdRunning(config, runsAddr, runId.String())
+			if err != nil {
+				return err
+			}
+
+			if running {
+				log.Println("run successfully reached RUNNING state.")
+				d.SetId(runId.String())
+				return nil
+			}
+			time.Sleep(10 * time.Second)
 		case "FAILED":
 			return fmt.Errorf("failed to start program in app: %s in state: %s.", d.Get("app"), p.Status)
 		default:
-			log.Println("program still in STARTING state, waiting 10 seconds.")
+			log.Println("program still in INITIALIZING state, waiting 10 seconds.")
 			time.Sleep(10 * time.Second)
 		}
 	}
@@ -158,7 +177,7 @@ func resourceStreamingProgramRunRead(d *schema.ResourceData, m interface{}) erro
 }
 
 // Checks if there is a running run for the terraform faux run id
-func isFauxRunIdRunning(config *Config, runsAddr string, runId string) (bool, error){
+func isFauxRunIdRunning(config *Config, runsAddr string, runId string) (bool, error) {
 	req, err := http.NewRequest(http.MethodGet, runsAddr, nil)
 	if err != nil {
 		return false, err
@@ -169,42 +188,45 @@ func isFauxRunIdRunning(config *Config, runsAddr string, runId string) (bool, er
 		return false, err
 	}
 
-    // TODO better way to define this nested struct?
-    type RuntimeArgs struct {
-        FauxRunId string `json:TF_FAUX_RUN_ID`
-    }
+	// TODO better way to define this nested struct?
+	type RuntimeArgs struct {
+		FauxRunId string `json:TF_FAUX_RUN_ID,omitempty`
+	}
 
-    type RuntimeProperties struct {
-        RuntimeArgs string `json:"runtimeArgs"`
-    }
+	type RuntimeProperties struct {
+		RuntimeArgs json.RawMessage `json:"runtimeArgs"`
+	}
 
-    // These are the only keys we need
-    type Run struct {
-        RunId string `json:"runid"`
-        Status string `json:"status"`
-        Properties RuntimeProperties
-    }
+	// These are the only keys we need
+	type Run struct {
+		RunId      string `json:"runid"`
+		Status     string `json:"status"`
+		Properties RuntimeProperties
+	}
 
-    var runs []Run
+	var runs []Run
 
 	if err := json.Unmarshal(b, &runs); err != nil {
 		return false, err
 	}
 
-    var args RuntimeArgs
+	var args RuntimeArgs
 
-    for _, r := range(runs) {
-        // Unescaping runtime Args which are stored as an escaped JSON string.
-        unquotedArgs, _ := strconv.Unquote(r.Properties.RuntimeArgs)
-        b := []byte(unquotedArgs)
-        if err := json.Unmarshal(b, &args); err != nil {
-            return false, err
-        }
-        if (runId == args.FauxRunId) {
-            return true, nil
-        }
-    }
-    return false, nil
+	for _, r := range runs {
+		// Unescaping runtime Args which are stored as an escaped JSON string.
+		unquotedArgs, _ := strconv.Unquote(string(r.Properties.RuntimeArgs))
+		log.Println(fmt.Sprintf("%s", unquotedArgs))
+		b := []byte(unquotedArgs)
+		if err := json.Unmarshal(b, &args); err != nil {
+			// This happens when a run does not contain the special TF con
+			log.Println("failed to parse unquotedArgs json")
+		}
+		if runId == args.FauxRunId && r.Status == "RUNNING" {
+			return true, nil
+		}
+		// TODO(jaketf) handle various ProgramRunStatuses https://github.com/cdapio/cdap/blob/1d62163faaecb5b888f4bccd0fcf4a8d27bbd549/cdap-proto/src/main/java/io/cdap/cdap/proto/ProgramRunStatus.java#L58-L84
+	}
+	return false, nil
 }
 
 func getProgramStatus(config *Config, statusAddr string) (p ProgramStatus, err error) {
@@ -300,19 +322,23 @@ func resourceStreamingProgramRunExists(d *schema.ResourceData, m interface{}) (b
 		return false, err
 	}
 
-    // This checks if there program is running (but it may be running several times)
+	// This checks if there program is running (but it may be running several times)
 	if p.Status == "RUNNING" {
-        // This handles ambiguity if there are multiple program runs
-        running, err := isFauxRunIdRunning(config, runAddr, d.Id())
-        if err != nil {
-            return false, err
-        }
+		// This handles ambiguity if there are multiple program runs
+		running, err := isFauxRunIdRunning(config, runAddr, d.Id())
+		if err != nil {
+			return false, err
+		}
 
-        if running {
-            return true, nil
-        }
+		if running {
+			return true, nil
+		}
 
-        return false, nil
+		if d.Get("allow_multiple_runs").(bool) {
+			return false, nil
+		} else {
+			return true, errors.New("there is a RUNNING run of this program and allow_multiple_runs is false")
+		}
 	}
 
 	return false, nil

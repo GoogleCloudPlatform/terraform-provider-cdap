@@ -1,11 +1,11 @@
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
-# cdap_streaming_program
+# cdap_streaming_program_run
 
 
 # Example
 
 ```
-resource "cdap_streaming_program" "test" {
+resource "cdap_streaming_program_run" "example" {
   namespace = "staging"
   type      = "spark"
   app       = "HL7v2_to_fhir"
@@ -19,6 +19,10 @@ resource "cdap_streaming_program" "test" {
 ## Argument Reference
 
 The following fields are supported:
+
+* allow_multiple_runs
+  (Required):
+  Specifies if multiple runs of the same program should be allowed
 
 * app
   (Required):

@@ -272,6 +272,7 @@ func resourceStreamingProgramRunDelete(d *schema.ResourceData, m interface{}) er
 		"/apps", d.Get("app").(string), d.Get("type").(string),
 		name)
 
+    // TODO(jaketf) this should check by faux run id to disambiguate if there are concurrent runs.
 	// Check status to handle scenarios like a program that is in STOPPING state.
 	statusAddr := urlJoin(
 		addr, "/status")

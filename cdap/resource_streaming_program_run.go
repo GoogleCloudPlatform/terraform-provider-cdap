@@ -30,7 +30,7 @@ import (
 )
 
 // This is a special key terraform will use to check for the existence of this run related to a particular resource
-const TF_FAUX_RUN_ID string = "__TF_RUN_ID__"
+const FAUX_RUN_ID string = "__FAUX_RUN_ID__"
 
 // https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/lifecycle.html.
 func resourceStreamingProgramRun() *schema.Resource {
@@ -116,7 +116,7 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 
 	runId, _ := uuid.NewRandom()
 	// This runtime arg will be unused by the pipeline but will allow the provider to associate a run with this resource.
-	argsObj[TF_FAUX_RUN_ID] = runId.String()
+	argsObj[FAUX_RUN_ID] = runId.String()
 
 	b, err := json.Marshal(argsObj)
 	if err != nil {
@@ -193,7 +193,7 @@ func isFauxRunIdRunning(config *Config, runsAddr string, runId string) (bool, er
 	}
 
 	type RuntimeArgs struct {
-		FauxRunId string `json:"__TF_RUN_ID__"`
+		FauxRunId string `json:"__FAUX_RUN_ID__"`
 	}
 
 	type RuntimeProperties struct {

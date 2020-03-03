@@ -188,9 +188,8 @@ func isFauxRunIdRunning(config *Config, runsAddr string, runId string) (bool, er
 		return false, err
 	}
 
-	// TODO better way to define this nested struct?
 	type RuntimeArgs struct {
-		FauxRunId string `json:TF_FAUX_RUN_ID,omitempty`
+		FauxRunId string `json:"__TF_RUN_ID__"`
 	}
 
 	type RuntimeProperties struct {
@@ -221,6 +220,8 @@ func isFauxRunIdRunning(config *Config, runsAddr string, runId string) (bool, er
 			// This happens when a run does not contain the special TF con
 			log.Println("failed to parse unquotedArgs json")
 		}
+		log.Println(fmt.Sprintf("found terraform faux run id: %s", args.FauxRunId))
+		log.Println(fmt.Sprintf("status: %s", r.Status))
 		if runId == args.FauxRunId && r.Status == "RUNNING" {
 			return true, nil
 		}

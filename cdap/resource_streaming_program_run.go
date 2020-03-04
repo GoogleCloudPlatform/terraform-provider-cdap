@@ -253,7 +253,7 @@ func getProgramStatus(config *Config, statusAddr string) (p ProgramStatus, err e
 	return p, nil
 }
 
-func stopProgram(config *Config, stopAddr string) error {
+func stopProgramRun(config *Config, runsAddr string) error {
 	req, err := http.NewRequest(http.MethodPost, stopAddr, nil)
 	if err != nil {
 		return err
@@ -274,10 +274,9 @@ func resourceStreamingProgramRunDelete(d *schema.ResourceData, m interface{}) er
 
     // TODO(jaketf) this should check by faux run id to disambiguate if there are concurrent runs.
 	// Check status to handle scenarios like a program that is in STOPPING state.
-	statusAddr := urlJoin(
-		addr, "/status")
-	stopAddr := urlJoin(
-		addr, "/stop")
+	statusAddr := urlJoin(addr, "/status")
+	stopAddr := urlJoin(addr, "/stop")
+	runAddr := urlJoin(addr, "/runs")
 
     // TODO(jaketf) refactor to poll program run stataus rather than program  status.
     // TODO(jaketf) refactor to use Retry https://www.terraform.io/docs/extend/resources/retries-and-customizable-timeouts.html#retry

@@ -161,7 +161,7 @@ func resourceStreamingProgramRunRead(d *schema.ResourceData, m interface{}) erro
 	return nil
 }
 
-type runtimeArgs struct {
+type parsedRuntimeArgs struct {
 	FauxRunID string `json:"__FAUX_RUN_ID__"`
 }
 
@@ -217,7 +217,7 @@ func getRunbyFauxID(config *Config, runsAddr string, runId string) (r *run, err 
 	}
 
 	var runs []*run
-	var args runtimeArgs
+	var args parsedRuntimeArgs
 
 	err = json.Unmarshal(b, &runs)
 	if err != nil {

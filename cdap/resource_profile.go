@@ -26,7 +26,7 @@ import (
 // https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/profile.html
 func resourceProfile() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceProfileCreate,
+		Create: chain(checkHealth, resourceProfileCreate),
 		Read:   resourceProfileRead,
 		Delete: resourceProfileDelete,
 		Exists: resourceProfileExists,

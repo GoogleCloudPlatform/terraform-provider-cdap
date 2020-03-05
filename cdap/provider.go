@@ -17,9 +17,6 @@ package cdap
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -83,38 +80,9 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		return nil, err
 	}
 
-	c := &Config{
+	return &Config{
 		host:          d.Get("host").(string),
 		httpClient:    httpClient,
 		storageClient: storageClient,
-	}
-
-	if err := healthcheck(c); err != nil {
-		log.Printf("failed health check, trying again after 5 seconds: %v", err)
-		time.Sleep(5 * time.Second)
-		if err := healthcheck(c); err != nil {
-			return nil, fmt.Errorf("failed health check, possibly due to an invalid host or credentials: %v", err)
-		}
-	}
-	return c, nil
-}
-
-func healthcheck(c *Config) error {
-	addr := urlJoin(c.host, "/v3/namespaces")
-	req, err := http.NewRequest(http.MethodGet, addr, nil)
-	if err != nil {
-		return err
-	}
-	b, err := httpCall(c.httpClient, req)
-	if err != nil {
-		return err
-	}
-
-	// Invalid credentials currently result in a redirect to sign in page instead of an error.
-	// So check for a valid return value by unmarshalling the JSON.
-	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
-		return fmt.Errorf("failed to unmarshal response: %v\n%v", err, string(b))
-	}
-	return nil
+	}, nil
 }

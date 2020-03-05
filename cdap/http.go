@@ -38,24 +38,16 @@ func urlJoin(base string, paths ...string) string {
 	return fmt.Sprintf("%s/%s", strings.TrimRight(base, "/"), strings.TrimLeft(p, "/"))
 }
 
-func do(client *http.Client, req *http.Request) (*http.Response, error) {
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
-}
-
 func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 	log.Printf("%+v", req)
 
-	resp, err := do(client, req)
+	resp, err := doHttpCall(client, req)
 
 	// CDAP REST intermittently returns 500 internal errors, we will retry on 500s once.
 	if resp.StatusCode == 500 {
 		log.Print("retrying on intermittent 500 error in 2 seconds")
 		time.Sleep(2 * time.Second)
-		resp, err = do(client, req)
+		resp, err = doHttpCall(client, req)
 	}
 
 	defer resp.Body.Close()
@@ -69,4 +61,12 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 		return nil, &httpError{code: resp.StatusCode, body: string(b)}
 	}
 	return b, nil
+}
+
+func doHttpCall(client *http.Client, req *http.Request) (*http.Response, error) {
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
 }

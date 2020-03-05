@@ -15,12 +15,14 @@
 package cdap
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"path"
 	"strings"
+	"time"
 )
 
 type httpError struct {
@@ -40,6 +42,19 @@ func urlJoin(base string, paths ...string) string {
 func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 	log.Printf("%+v", req)
 
+	b, err := doHttpCall(client, req)
+
+	// CDAP REST intermittently returns 500 internal errors, we will retry on 500s once.
+	var e *httpError
+	if errors.As(err, &e) && e.code == 500 {
+		log.Print("retrying on intermittent 500 error in 2 seconds")
+		time.Sleep(2 * time.Second)
+		b, err = doHttpCall(client, req)
+	}
+	return b, nil
+}
+
+func doHttpCall(client *http.Client, req *http.Request) ([]byte, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -50,7 +65,6 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, &httpError{code: resp.StatusCode, body: string(b)}
 	}

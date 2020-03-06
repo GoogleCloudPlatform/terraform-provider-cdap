@@ -178,9 +178,9 @@ func (ra *runtimeArgs) UnmarshalJSON(data []byte) error {
 
 // These are the only keys we need
 type run struct {
-	RunID      string `json:"runid"`
-	Status     string `json:"status"`
-	Properties runtimeProperties
+	RunID      string            `json:"runid"`
+	Status     string            `json:"status"`
+	Properties runtimeProperties `json:"properties"`
 }
 
 // Checks if there is a running run for the terraform faux run id
@@ -203,37 +203,31 @@ func isFauxRunIDRunningYet(config *Config, runsAddr string, runID string) (bool,
 
 // TODO optimization: we call this function often when we could probably get the real runid once and cache it.
 // This would avoid redoing this loop everytime to get the same result. probably inconsequential unless there are many runs of this program
-func getRunByFauxID(config *Config, runsAddr string, runID string) (r *run, err error) {
+func getRunByFauxID(config *Config, runsAddr string, runID string) (*run, error) {
 	req, err := http.NewRequest(http.MethodGet, runsAddr, nil)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	b, err := httpCall(config.httpClient, req)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	var runs []*run
 
-	err = json.Unmarshal(b, &runs)
-	if err != nil {
-		return &run{}, fmt.Errorf("could not unmarshal run payload: %v", err)
+	if err = json.Unmarshal(b, &runs); err != nil {
+		return nil, fmt.Errorf("could not unmarshal run payload: %v", err)
 	}
 
 	for _, r := range runs {
-	    args := r.Properties.RuntimeArgs
-		// if err := json.Unmarshal(r.Properties.RuntimeArgs, &args); err != nil {
-		// 	// This happens when a run does not contain the special faux id.
-		// 	return &run{}, fmt.Errorf("failed to unmarshall runtime Args json: %v", err)
-		// }
-		log.Printf("found terraform faux run id: %v", args.FauxRunID)
-		log.Printf("status: %v", r.Status)
+		args := r.Properties.RuntimeArgs
+		log.Printf("found terraform run id: %v faux run id: %v status: %v", r.RunID, args.FauxRunID, r.Status)
 		if runID == args.FauxRunID {
 			return r, nil
 		}
 	}
-	return &run{}, fmt.Errorf("no run found with faux runid: %v", runID)
+	return nil, fmt.Errorf("no run found with faux runid: %v", runID)
 }
 
 func stopProgramRun(config *Config, stopAddr string) error {
@@ -303,17 +297,16 @@ func resourceStreamingProgramRunExists(d *schema.ResourceData, m interface{}) (b
 		return false, err
 	}
 
-	// This checks if there program is running (but it may be running several times)
+	running := false
+	// This checks if the program is running (but it may be running several times)
 	if p.Status == "RUNNING" {
 		// This handles ambiguity if there are multiple program runs
-		running, err := isFauxRunIDRunningYet(config, runAddr, d.Id())
+		running, err = isFauxRunIDRunningYet(config, runAddr, d.Id())
 		if err != nil {
 			return false, fmt.Errorf("error determining status of run with FauxId %v", d.Id())
 		}
 
-		if running {
-			return true, nil
-		}
+		return running, nil
 	}
 
 	return false, nil

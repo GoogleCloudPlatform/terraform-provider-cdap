@@ -61,3 +61,4 @@ The following fields are supported:
 * [cdap_namespace](r/cdap_namespace.md)
 * [cdap_namespace_preferences](r/cdap_namespace_preferences.md)
 * [cdap_profile](r/cdap_profile.md)
+* [cdap_streaming_program_run](r/cdap_streaming_program_run.md)

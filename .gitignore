@@ -1,3 +1,25 @@
 # Built binaries
 terraform-provider-cdap
 generate_docs
+!tools/**
+
+# It's a convienent dev workflow to have a baic main.tf, etc. in the root 
+# directory of this reposo you can just run:
+# go build && terraform init && terraform apply -auto-approve
+# However, these files should not be committed.
+*.tf
+*.tf.json
+*.hcl
+
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Ignore any .tfvars files
+*.tfvars
+
+# Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
+*tfplan*

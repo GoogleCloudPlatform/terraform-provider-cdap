@@ -1,0 +1,16 @@
+{{template "header" .}}
+
+# Example
+
+```
+resource "cdap_streaming_program_run" "test" {
+  namespace = "adp_staging"
+  app       = "HL7v2_to_fhir"
+
+  runtime_arguments = {
+    "system.profile.name" = "adp-aintegration-hl7-stream-ingest-us-central1-n"
+  }
+}
+```
+
+{{template "schema" .}}

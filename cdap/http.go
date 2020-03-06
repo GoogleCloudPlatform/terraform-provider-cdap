@@ -42,19 +42,19 @@ func urlJoin(base string, paths ...string) string {
 func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 	log.Printf("%+v", req)
 
-	b, err := doHttpCall(client, req)
+	b, err := doHTTPCall(client, req)
 
 	// CDAP REST intermittently returns 500 internal errors, we will retry on 500s once.
 	var e *httpError
 	if errors.As(err, &e) && e.code == 500 {
 		log.Print("retrying on intermittent 500 error in 2 seconds")
 		time.Sleep(2 * time.Second)
-		b, err = doHttpCall(client, req)
+		b, err = doHTTPCall(client, req)
 	}
 	return b, nil
 }
 
-func doHttpCall(client *http.Client, req *http.Request) ([]byte, error) {
+func doHTTPCall(client *http.Client, req *http.Request) ([]byte, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

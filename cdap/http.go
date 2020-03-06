@@ -51,7 +51,7 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 		time.Sleep(2 * time.Second)
 		b, err = doHTTPCall(client, req)
 	}
-	return b, nil
+	return b, err
 }
 
 func doHTTPCall(client *http.Client, req *http.Request) ([]byte, error) {

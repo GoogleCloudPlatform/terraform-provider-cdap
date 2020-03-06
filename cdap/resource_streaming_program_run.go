@@ -68,7 +68,8 @@ func resourceStreamingProgramRun() *schema.Resource {
 				Type:        schema.TypeString,
 				Required:    true,
 				ForceNew:    true,
-				Description: "Name of the program.",
+				Description: "Name of the program. Should be one of  https://github.com/cdapio/cdap/blob/develop/cdap-ui/app/cdap/services/global-constants.js#L37-L50",
+				ValidateFunc: validation.StringInSlice([]string{"DataPipelineWorkflow", "DataStreamsSparkStreaming", "SQLWorkflow"}, false),
 				DefaultFunc: func() (interface{}, error) {
 					return "DataStreamsSparkStreaming", nil
 				},

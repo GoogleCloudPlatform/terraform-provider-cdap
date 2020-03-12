@@ -4,14 +4,13 @@
 
 # Example
 
+Note, `jsonencode` is used for the purpose of explicit example.
+In most real use cases you would just use.
+`spec = file("${path.module}/realtive/path/to/pipeline_spec.json")`
 ```
 resource "cdap_application" "pipeline" {
     name = "example_pipeline"
-    artifact {
-        name = "cdap-data-pipeline"
-        version = "6.1.1"
-    }
-    config = jsonencode({
+    spec = jsonencode({
         "resources": {
             "memoryMB": 2048,
             "virtualCores": 1

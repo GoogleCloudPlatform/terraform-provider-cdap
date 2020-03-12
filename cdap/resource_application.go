@@ -15,29 +15,21 @@
 package cdap
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
-// https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/lifecycle.html.
 func resourceApplication() *schema.Resource {
 	return &schema.Resource{
-		Create: chain(checkHealth, resourceApplicationCreate),
+		Create: resourceApplicationCreate,
 		Read:   resourceApplicationRead,
 		Delete: resourceApplicationDelete,
 		Exists: resourceApplicationExists,
 
 		Schema: map[string]*schema.Schema{
-			"name": {
-				Type:        schema.TypeString,
-				Required:    true,
-				ForceNew:    true,
-				Description: "The name of the application.",
-			},
 			"namespace": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -47,49 +39,17 @@ func resourceApplication() *schema.Resource {
 					return defaultNamespace, nil
 				},
 			},
-			"description": {
+			"name": {
 				Type:        schema.TypeString,
-				Optional:    true,
-				ForceNew:    true,
-				Description: "A user friendly description of the application.",
-			},
-			"artifact": {
-				Type:        schema.TypeList,
+				Description: "The name of the application. This will be used as the unique identifier in the CDAP API.",
 				Required:    true,
 				ForceNew:    true,
-				Description: "The artifact used to create the pipeline",
-				MaxItems:    1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							ForceNew:    true,
-							Description: "The name of the artifact.",
-						},
-						"version": {
-							Type:        schema.TypeString,
-							Required:    true,
-							ForceNew:    true,
-							Description: "The version of the artifact.",
-						},
-						"scope": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							ForceNew:    true,
-							Description: "The scope of the artifact, one of either SYSTEM or USER. Defaults to SYSTEM.",
-							DefaultFunc: func() (interface{}, error) {
-								return "SYSTEM", nil
-							},
-						},
-					},
-				},
 			},
-			"config": {
+			"spec": {
 				Type:        schema.TypeString,
+				Description: "The full contents of the exported pipeline JSON spec.",
 				Required:    true,
 				ForceNew:    true,
-				Description: "The JSON encoded configuration of the pipeline",
 			},
 		},
 	}
@@ -98,30 +58,11 @@ func resourceApplication() *schema.Resource {
 func resourceApplicationCreate(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-
 	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/apps", name)
 
-	confObj := make(map[string]interface{})
-	if err := json.Unmarshal([]byte(d.Get("config").(string)), &confObj); err != nil {
-		return err
-	}
+	body := strings.NewReader(d.Get("spec").(string))
 
-	obj := map[string]interface{}{
-		"name":     name,
-		"artifact": d.Get("artifact").([]interface{})[0],
-		"config":   confObj,
-	}
-
-	if v, ok := d.GetOk("description"); ok {
-		obj["description"] = v
-	}
-
-	b, err := json.Marshal(obj)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest(http.MethodPut, addr, bytes.NewReader(b))
+	req, err := http.NewRequest(http.MethodPut, addr, body)
 	if err != nil {
 		return err
 	}
@@ -154,15 +95,7 @@ func resourceApplicationDelete(d *schema.ResourceData, m interface{}) error {
 func resourceApplicationExists(d *schema.ResourceData, m interface{}) (bool, error) {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-
-	namespace := d.Get("namespace").(string)
-	if exists, err := namespaceExists(config, namespace); err != nil {
-		return false, fmt.Errorf("failed to check for existence of namespace %q: %v", namespace, err)
-	} else if !exists {
-		return false, nil
-	}
-
-	addr := urlJoin(config.host, "/v3/namespaces", namespace, "/apps")
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/apps")
 	req, err := http.NewRequest(http.MethodGet, addr, nil)
 	if err != nil {
 		return false, err

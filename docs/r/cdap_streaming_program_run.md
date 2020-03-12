@@ -10,7 +10,7 @@ resource "cdap_streaming_program_run" "test" {
   app       = "HL7v2_to_fhir"
 
   runtime_arguments = {
-    "system.profile.name" = "adp-aintegration-hl7-stream-ingest-us-central1-n"
+    "system.profile.name" = "my-custom-profile-name"
   }
 }
 ```

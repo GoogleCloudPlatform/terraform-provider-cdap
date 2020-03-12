@@ -8,11 +8,9 @@ resource "cdap_streaming_program_run" "test" {
   app       = "HL7v2_to_fhir"
 
   runtime_arguments = {
-    "system.profile.name" = "adp-aintegration-hl7-stream-ingest-us-central1-n"
+    "system.profile.name" = "my-custom-profile-name"
   }
 }
 ```
-The `system.profile.name` is a special macro we use to specify the compute profile name to use
-for this program run.
 
 {{template "schema" .}}

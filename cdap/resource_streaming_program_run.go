@@ -111,12 +111,12 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 		argsObj[k] = val.(string)
 	}
 
-	randomID, err := uuid.NewRandom()
+	runID, err := uuid.NewRandom()
 	if err != nil {
 		return fmt.Errorf("error generating uuid for faux run id: %v", err)
 	}
 	// This runtime arg will be unused by the pipeline but will allow the provider to associate a run with this resource.
-	argsObj[fauxRunID] = randomID.String()
+	argsObj[fauxRunID] = runID.String()
 
 	b, err := json.Marshal(argsObj)
 	if err != nil {
@@ -135,24 +135,19 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 	// Poll until actually reaches RUNNING state.
 	return resource.Retry(d.Timeout(schema.TimeoutCreate), func() *resource.RetryError {
 		time.Sleep(10 * time.Second) // avoid spamming retries and initial failure to find run.
-		r, err := getRunByFauxID(config, runsAddr, randomID.String())
+		isRunning, err := isFauxRunIDRunningYet(config, runsAddr, runID.String())
 		if err != nil {
 			return resource.NonRetryableError(err)
 		}
-
-		isRunning, err := isRunIDRunningYet(config, runsAddr, r.RunID)
-		if err != nil {
-			return resource.NonRetryableError(err)
-		}
-
 		if isRunning {
-			d.SetId(r.RunID)
+			d.SetId(runID.String())
 			return nil
 		}
-		return resource.RetryableError(fmt.Errorf("still waiting for program run with id: %v which is in an initializing state", r.RunID))
+		return resource.RetryableError(fmt.Errorf("still waiting for program run with faux run id: %v which is in an initializing state", runID.String()))
 	})
 }
 
+//TODO ?
 func resourceStreamingProgramRunRead(d *schema.ResourceData, m interface{}) error {
 	return nil
 }
@@ -190,10 +185,10 @@ type run struct {
 
 // Checks if there is a running run for the terraform faux run id
 // raises error if the program is not in an initializing state (e.g. it failed or was killed in the ui)
-func isRunIDRunningYet(config *Config, runsAddr string, runID string) (bool, error) {
-	r, err := getRunByID(config, runsAddr, runID)
+func isFauxRunIDRunningYet(config *Config, runsAddr string, runID string) (bool, error) {
+	r, err := getRunByFauxID(config, runsAddr, runID)
 	if err != nil {
-		return false, fmt.Errorf("couldn't get run id: %v: %v", runID, err)
+		return false, err
 	}
 
 	if r.Status == "RUNNING" {
@@ -203,9 +198,12 @@ func isRunIDRunningYet(config *Config, runsAddr string, runID string) (bool, err
 		return false, fmt.Errorf("program not running or initializing, in state: %v", r.Status)
 	}
 	return false, nil
+
 }
 
-func getRunByFauxID(config *Config, runsAddr string, fauxRunID string) (*run, error) {
+// TODO optimization: we call this function often when we could probably get the real runid once and cache it.
+// This would avoid redoing this loop everytime to get the same result. probably inconsequential unless there are many runs of this program
+func getRunByFauxID(config *Config, runsAddr string, runID string) (*run, error) {
 	req, err := http.NewRequest(http.MethodGet, runsAddr, nil)
 	if err != nil {
 		return nil, err
@@ -225,31 +223,11 @@ func getRunByFauxID(config *Config, runsAddr string, fauxRunID string) (*run, er
 	for _, r := range runs {
 		args := r.Properties.RuntimeArgs
 		log.Printf("found terraform run id: %v faux run id: %v status: %v", r.RunID, args.FauxRunID, r.Status)
-		if fauxRunID == args.FauxRunID {
+		if runID == args.FauxRunID {
 			return r, nil
 		}
 	}
-	return nil, fmt.Errorf("no run found with faux runid: %v", fauxRunID)
-}
-
-func getRunByID(config *Config, runsAddr string, runID string) (*run, error) {
-	req, err := http.NewRequest(http.MethodGet, urlJoin(runsAddr, runID), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := httpCall(config.httpClient, req)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't retrived run with run id: %v: %s", runID, err)
-	}
-
-	var run *run
-
-	if err = json.Unmarshal(b, &run); err != nil {
-		return nil, fmt.Errorf("could not unmarshal run payload: %v", err)
-	}
-
-	return run, nil
+	return nil, fmt.Errorf("no run found with faux runid: %v", runID)
 }
 
 func stopProgramRun(config *Config, stopAddr string) error {
@@ -266,7 +244,7 @@ func resourceStreamingProgramRunDelete(d *schema.ResourceData, m interface{}) er
 
 	addr := getProgramAddr(config, d)
 	runsAddr := urlJoin(addr, "/runs")
-	r, err := getRunByID(config, runsAddr, d.Id())
+	r, err := getRunByFauxID(config, runsAddr, d.Id())
 
 	if err != nil {
 		return err
@@ -275,7 +253,7 @@ func resourceStreamingProgramRunDelete(d *schema.ResourceData, m interface{}) er
 	stopAddr := urlJoin(runsAddr, r.RunID, "/stop")
 
 	return resource.Retry(d.Timeout(schema.TimeoutDelete), func() *resource.RetryError {
-		r, err := getRunByID(config, runsAddr, d.Id())
+		r, err := getRunByFauxID(config, runsAddr, d.Id())
 		if err != nil {
 			return resource.NonRetryableError(fmt.Errorf("error getting program status by faux id: %v", err))
 		}
@@ -323,7 +301,7 @@ func resourceStreamingProgramRunExists(d *schema.ResourceData, m interface{}) (b
 	// This checks if the program is running (but it may be running several times)
 	if p.Status == "RUNNING" {
 		// This handles ambiguity if there are multiple program runs
-		running, err = isRunIDRunningYet(config, runAddr, d.Id())
+		running, err = isFauxRunIDRunningYet(config, runAddr, d.Id())
 		if err != nil {
 			return false, fmt.Errorf("error determining status of run with FauxId %v", d.Id())
 		}

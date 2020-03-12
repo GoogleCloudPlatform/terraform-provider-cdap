@@ -5,13 +5,12 @@
 # Example
 
 ```
-resource "cdap_streaming_program_run" "example" {
-  namespace = "staging"
-  type      = "spark"
+resource "cdap_streaming_program_run" "test" {
+  namespace = "adp_staging"
   app       = "HL7v2_to_fhir"
 
   runtime_arguments = {
-    "system.profile.name" = "hl7-stream-ingest"
+    "system.profile.name" = "adp-aintegration-hl7-stream-ingest-us-central1-n"
   }
 }
 ```
@@ -20,21 +19,17 @@ resource "cdap_streaming_program_run" "example" {
 
 The following fields are supported:
 
-* allow_multiple_runs
-  (Required):
-  Specifies if multiple runs of the same program should be allowed
-
 * app
   (Required):
   Name of the application.
 
-* name
-  (Required):
-  Name of the program.
-
 * namespace
   (Optional):
   The name of the namespace in which this resource belongs. If not provided, the default namespace is used.
+
+* program
+  (Required):
+  Name of the program.
 
 * runtime_arguments
   (Required):

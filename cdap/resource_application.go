@@ -49,12 +49,12 @@ func resourceApplication() *schema.Resource {
 				ForceNew:    true,
 			},
 			"spec": {
-				Type:        schema.TypeString,
-				Description: "The full contents of the exported pipeline JSON spec.",
-				Required:    true,
-				ForceNew:    true,
-                ValidateFunc: validation.ValidateJsonString,
-                StateFunc: func(v interface{}) string {
+				Type:         schema.TypeString,
+				Description:  "The full contents of the exported pipeline JSON spec.",
+				Required:     true,
+				ForceNew:     true,
+				ValidateFunc: validation.ValidateJsonString,
+				StateFunc: func(v interface{}) string {
 					json, _ := structure.NormalizeJsonString(v)
 					return json
 				},

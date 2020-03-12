@@ -90,6 +90,13 @@ func resourceStreamingProgramRun() *schema.Resource {
 				Description: "The runtime arguments used to start the program",
 				Elem:        &schema.Schema{Type: schema.TypeString},
 			},
+			"run_id": {
+				Type:        schema.TypeString,
+                Computed:    true,
+				ForceNew:    true,
+				Description: "The run the CDAP Run ID",
+				Elem:        &schema.Schema{Type: schema.TypeString},
+			},
 		},
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(20 * time.Minute),
@@ -146,7 +153,7 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 		}
 
 		if isRunning {
-			d.SetId(r.RunID)
+			d.Set("run_id", r.RunID)
 			return nil
 		}
 		return resource.RetryableError(fmt.Errorf("still waiting for program run with id: %v which is in an initializing state", r.RunID))

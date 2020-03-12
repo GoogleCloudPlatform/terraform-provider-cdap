@@ -31,6 +31,10 @@ The following fields are supported:
   (Required):
   Name of the program.
 
+* run_id
+  (Computed):
+  The run the CDAP Run ID
+
 * runtime_arguments
   (Required):
   The runtime arguments used to start the program

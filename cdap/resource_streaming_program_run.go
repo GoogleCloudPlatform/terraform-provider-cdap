@@ -154,6 +154,7 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 
 		if isRunning {
 			d.Set("run_id", r.RunID)
+            d.SetId(r.RunID)
 			return nil
 		}
 		return resource.RetryableError(fmt.Errorf("still waiting for program run with id: %v which is in an initializing state", r.RunID))

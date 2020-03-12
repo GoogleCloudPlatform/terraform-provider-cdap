@@ -12,5 +12,7 @@ resource "cdap_streaming_program_run" "test" {
   }
 }
 ```
+The `system.profile.name` is a special macro we use to specify the compute profile name to use
+for this program run.
 
 {{template "schema" .}}

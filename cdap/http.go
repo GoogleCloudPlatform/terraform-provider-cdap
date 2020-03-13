@@ -44,10 +44,10 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 
 	b, err := doHTTPCall(client, req)
 
-	// CDAP REST intermittently returns 500 internal errors, we will retry on 500s once.
+	// CDAP REST intermittently returns 500, 504, etc. internal errors, we will retry on 5xxs once.
 	var e *httpError
-	if errors.As(err, &e) && e.code == 500 {
-		log.Print("retrying on intermittent 500 error in 2 seconds")
+	if errors.As(err, &e) && e.code >= 500 && e.code < 600 {
+		log.Print("retrying on intermittent 5xx error in 2 seconds")
 		time.Sleep(2 * time.Second)
 		b, err = doHTTPCall(client, req)
 	}

@@ -46,12 +46,13 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 
 	// CDAP REST intermittently returns 500, 504, etc. internal errors, we will retry on 5xxs once.
 	var e *httpError
-    // poor man's 5x EBO.
+    // poor man's 3x EBO.
     s := 2
-    for i:=0; i < 5; i++ {
+    for i:=0; i < 3; i++ {
         if errors.As(err, &e) && e.code >= 500 && e.code < 600 {
             log.Printf("retrying on intermittent 5xx error in %v seconds", s)
-            time.Sleep(2 * time.Second)
+            // Have to explicitly cast if int var: https://play.golang.org/d0ZFLSVoAw
+            time.Sleep(time.Duration(s) * time.Second)
             s *= 2
             b, err = doHTTPCall(client, req)
             if err != nil {

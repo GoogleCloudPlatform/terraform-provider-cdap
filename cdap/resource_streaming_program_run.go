@@ -92,7 +92,7 @@ func resourceStreamingProgramRun() *schema.Resource {
 			},
 			"run_id": {
 				Type:        schema.TypeString,
-                Computed:    true,
+				Computed:    true,
 				ForceNew:    true,
 				Description: "The run the CDAP Run ID",
 				Elem:        &schema.Schema{Type: schema.TypeString},
@@ -154,7 +154,7 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 
 		if isRunning {
 			d.Set("run_id", r.RunID)
-            d.SetId(r.RunID)
+			d.SetId(r.RunID)
 			return nil
 		}
 		return resource.RetryableError(fmt.Errorf("still waiting for program run with id: %v which is in an initializing state", r.RunID))
@@ -251,13 +251,13 @@ func getRunByID(config *Config, runsAddr string, runID string) (*run, error) {
 		return nil, fmt.Errorf("couldn't retrived run with run id: %v: %s", runID, err)
 	}
 
-	var run *run
+	var r *run
 
-	if err = json.Unmarshal(b, &run); err != nil {
+	if err = json.Unmarshal(b, &r); err != nil {
 		return nil, fmt.Errorf("could not unmarshal run payload: %v", err)
 	}
 
-	return run, nil
+	return r, nil
 }
 
 func stopProgramRun(config *Config, stopAddr string) error {
@@ -273,14 +273,8 @@ func resourceStreamingProgramRunDelete(d *schema.ResourceData, m interface{}) er
 	config := m.(*Config)
 
 	addr := getProgramAddr(config, d)
-	runsAddr := urlJoin(addr, "/runs")
-	r, err := getRunByID(config, runsAddr, d.Id())
-
-	if err != nil {
-		return err
-	}
-
-	stopAddr := urlJoin(runsAddr, r.RunID, "/stop")
+    runsAddr := urlJoin(addr, "/runs")
+	stopAddr := urlJoin(runsAddr, d.Id(), "/stop")
 
 	return resource.Retry(d.Timeout(schema.TimeoutDelete), func() *resource.RetryError {
 		r, err := getRunByID(config, runsAddr, d.Id())

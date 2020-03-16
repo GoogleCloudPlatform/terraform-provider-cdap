@@ -45,7 +45,7 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 
 	b, err := doHTTPCall(client, req)
 
-	// CDAP REST intermittently returns 500, 504, etc. internal errors, we will retry on 5xxs once.
+	// CDAP REST intermittently returns 500, 504, etc. internal errors, we will retry on 5xxs.
 	var e *httpError
 	// poor man's 3x EBO.
 	for i := 0; i < 3; i++ {
@@ -57,7 +57,9 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 			if err == nil {
 				break
 			}
-		}
+		} else {
+            break
+        }
 	}
 	return b, err
 }

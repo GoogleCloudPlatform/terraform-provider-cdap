@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"path"
 	"strings"
@@ -44,11 +45,15 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 
 	b, err := doHTTPCall(client, req)
 
-	// CDAP REST intermittently returns 500 internal errors, we will retry on 500s once.
+	// CDAP REST intermittently returns 500, 504, etc. internal errors, we will retry on 5xxs.
 	var e *httpError
-	if errors.As(err, &e) && e.code == 500 {
-		log.Print("retrying on intermittent 500 error in 2 seconds")
-		time.Sleep(2 * time.Second)
+	// poor man's 3x EBO.
+	for i := 0; i < 3; i++ {
+		if !(errors.As(err, &e) && e.code >= 500 && e.code < 600) {
+			break
+		}
+		log.Println("retrying on intermittent 5xx error")
+		time.Sleep(time.Duration(math.Pow(2, float64(i))) * time.Second)
 		b, err = doHTTPCall(client, req)
 	}
 	return b, err

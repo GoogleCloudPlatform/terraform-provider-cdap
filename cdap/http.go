@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"path"
 	"strings"
@@ -46,20 +47,18 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 
 	// CDAP REST intermittently returns 500, 504, etc. internal errors, we will retry on 5xxs once.
 	var e *httpError
-    // poor man's 3x EBO.
-    s := 2
-    for i:=0; i < 3; i++ {
-        if errors.As(err, &e) && e.code >= 500 && e.code < 600 {
-            log.Printf("retrying on intermittent 5xx error in %v seconds", s)
-            // Have to explicitly cast if int var: https://play.golang.org/d0ZFLSVoAw
-            time.Sleep(time.Duration(s) * time.Second)
-            s *= 2
-            b, err = doHTTPCall(client, req)
-            if err != nil {
-                break
-            }
-        }
-    }
+	// poor man's 3x EBO.
+	for i := 0; i < 3; i++ {
+		if errors.As(err, &e) && e.code >= 500 && e.code < 600 {
+			log.Printf("retrying on intermittent 5xx error in %v seconds", s)
+			// Have to explicitly cast if int var: https://play.golang.org/d0ZFLSVoAw
+			time.Sleep(time.Duration(math.Pow(2, i)) * time.Second)
+			b, err = doHTTPCall(client, req)
+			if err != nil {
+				break
+			}
+		}
+	}
 	return b, err
 }
 

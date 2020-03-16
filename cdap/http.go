@@ -54,7 +54,7 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 			// Have to explicitly cast if int var: https://play.golang.org/d0ZFLSVoAw
 			time.Sleep(time.Duration(math.Pow(2, i)) * time.Second)
 			b, err = doHTTPCall(client, req)
-			if err != nil {
+			if err == nil {
 				break
 			}
 		}

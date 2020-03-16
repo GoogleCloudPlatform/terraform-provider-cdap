@@ -86,13 +86,7 @@ func resourceGCSArtifactCreate(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-
-	if err := uploadArtifact(config, d, a); err != nil {
-		return err
-	}
-
-	d.SetId(a.name)
-	return nil
+	return uploadArtifact(config, d, a)
 }
 
 func loadGCSArtifact(ctx context.Context, d *schema.ResourceData, storageClient *storage.Client) (*artifact, error) {

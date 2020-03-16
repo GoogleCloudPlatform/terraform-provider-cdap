@@ -95,10 +95,7 @@ func resourceLocalArtifactCreate(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err := uploadArtifact(config, d, a); err != nil {
-		return err
-	}
-	return nil
+	return uploadArtifact(config, d, a)
 }
 
 func uploadArtifact(config *Config, d *schema.ResourceData, a *artifact) error {

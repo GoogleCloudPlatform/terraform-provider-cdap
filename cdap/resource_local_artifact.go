@@ -90,10 +90,6 @@ type artifactConfig struct {
 }
 
 func resourceLocalArtifactCreate(d *schema.ResourceData, m interface{}) error {
-	// An artifact with the same name and version can be uploaded multiple times
-	// without error. Because of this, there is no need to do partial state
-	// management to account for the facdt that setting properties may fail
-	// because uploading a jar can occur multiple times without error.
 	config := m.(*Config)
 	a, err := loadLocalArtifact(d)
 	if err != nil {
@@ -102,20 +98,20 @@ func resourceLocalArtifactCreate(d *schema.ResourceData, m interface{}) error {
 	if err := uploadArtifact(config, d, a); err != nil {
 		return err
 	}
-	d.SetId(a.name)
 	return nil
 }
 
-func uploadArtifact(config *Config, rd *schema.ResourceData, a *artifact) error {
-	addr := urlJoin(config.host, "/v3/namespaces", rd.Get("namespace").(string), "/artifacts", a.name)
+func uploadArtifact(config *Config, d *schema.ResourceData, a *artifact) error {
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", a.name)
 
 	if err := uploadJar(config.httpClient, addr, a); err != nil {
 		return err
 	}
+	d.SetId(a.name)
+
 	if err := uploadProps(config.httpClient, addr, a); err != nil {
 		return err
 	}
-
 	return nil
 }
 

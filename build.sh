@@ -31,5 +31,5 @@ do
     output_name="terraform-cdap-provider_${VERSION}_${GOOS}-${GOARCH}"
     echo "Building ${output_name}"
 
-    env GOOS=$GOOS GOARCH=$GOARCH go build -o ${OUTPUT_DIR}/${output_name}
+    env GOOS=${GOOS} GOARCH=${GOARCH} go build -o ${OUTPUT_DIR}/${output_name}
 done

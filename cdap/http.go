@@ -49,17 +49,12 @@ func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
 	var e *httpError
 	// poor man's 3x EBO.
 	for i := 0; i < 3; i++ {
-		if errors.As(err, &e) && e.code >= 500 && e.code < 600 {
-			log.Print("retrying on intermittent 5xx error")
-			// Have to explicitly cast if int var: https://play.golang.org/d0ZFLSVoAw
-			time.Sleep(time.Duration(math.Pow(2, float64(i))) * time.Second)
-			b, err = doHTTPCall(client, req)
-			if err == nil {
-				break
-			}
-		} else {
+		if !(errors.As(err, &e) && e.code >= 500 && e.code < 600) {
 			break
 		}
+		log.Println("retrying on intermittent 5xx error")
+		time.Sleep(time.Duration(math.Pow(2, float64(i))) * time.Second)
+		b, err = doHTTPCall(client, req)
 	}
 	return b, err
 }

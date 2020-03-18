@@ -23,17 +23,12 @@ if [[ -z ${VERSION} ]]; then
     exit 1
 fi
 
-platforms=("linux/amd64" "darwin/amd64" "windows/amd64")
+SUPPORTED_OS=("linux" "darwin" "windows")
+ARCH="amd64"
 
-for platform in "${platforms[@]}"
+for OS in "${SUPPORTED_OS[@]}"
 do
-    IFS="/"
-    read -ra platform_split <<< "${platform}"
-    GOOS=${platform_split[0]}
-    GOARCH=${platform_split[1]}
-
-    output_name="terraform-cdap-provider_${VERSION}_${GOOS}-${GOARCH}"
+    output_name="terraform-cdap-provider_${VERSION}_${OS}-${ARCH}"
     echo "Building ${output_name}"
-
-    env GOOS="${GOOS}" GOARCH="${GOARCH}" go build -o "${OUTPUT_DIR}"/"${output_name}"
+    env GOOS="${OS}" ARCH="${ARCH}" go build -o "${OUTPUT_DIR}/${output_name}"
 done

@@ -28,7 +28,7 @@ ARCH="amd64"
 
 for OS in "${SUPPORTED_OS[@]}"
 do
-    output_name="terraform-cdap-provider_${VERSION}_${OS}-${ARCH}"
+    output_name="terraform-provider-cdap_${VERSION}_${OS}-${ARCH}"
     echo "Building ${output_name}"
-    env GOOS="${OS}" ARCH="${ARCH}" go build -o "${OUTPUT_DIR}/${output_name}"
+    env GOOS="${OS}" GOARCH="${ARCH}" go build -o "${OUTPUT_DIR}/${output_name}"
 done

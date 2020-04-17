@@ -32,7 +32,7 @@ var bucketPathRE = regexp.MustCompile(`^gs://(.+)/(.+)$`)
 // store the entire JAR's contents as a string.
 func resourceGCSArtifact() *schema.Resource {
 	return &schema.Resource{
-		Create: chain(checkHealth, resourceGCSArtifactCreate),
+		Create: resourceGCSArtifactCreate,
 		Read:   resourceLocalArtifactRead,
 		Delete: resourceLocalArtifactDelete,
 		Exists: resourceLocalArtifactExists,

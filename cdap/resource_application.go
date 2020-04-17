@@ -27,7 +27,7 @@ import (
 // https://docs.cdap.io/cdap/current/en/reference-manual/http-restful-api/lifecycle.html.
 func resourceApplication() *schema.Resource {
 	return &schema.Resource{
-		Create: chain(checkHealth, resourceApplicationCreate),
+		Create: resourceApplicationCreate,
 		Read:   resourceApplicationRead,
 		Delete: resourceApplicationDelete,
 		Exists: resourceApplicationExists,

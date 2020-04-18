@@ -31,7 +31,7 @@ import (
 // store the entire JAR's contents as a string.
 func resourceLocalArtifact() *schema.Resource {
 	return &schema.Resource{
-		Create: chain(checkHealth, resourceLocalArtifactCreate),
+		Create: resourceLocalArtifactCreate,
 		Read:   resourceLocalArtifactRead,
 		Delete: resourceLocalArtifactDelete,
 		Exists: resourceLocalArtifactExists,

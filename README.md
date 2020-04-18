@@ -8,7 +8,12 @@ for Terraform can be used to manage a
 infra-as-code manner.
 
 This is a
-[community maintained provider](https://www.terraform.io/docs/providers/type/community-index.html) and not an official Google or Hashicorp product.
+[community maintained provider](https://www.terraform.io/docs/providers/type/community-index.html)
+and not an official Google or Hashicorp product.
+
+See the Cloud Foundation Toolkit
+[CDF modules](https://github.com/terraform-google-modules/terraform-google-data-fusion)
+for GCP specific helpers around Data Fusion and CDAP.
 
 ## Documentation
 

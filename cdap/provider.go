@@ -75,7 +75,7 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 	}
 	httpClient.Timeout = 5 * time.Minute
 
-	storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly))
+	storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly), option.WithoutAuthentication())
 	if err != nil {
 		return nil, err
 	}

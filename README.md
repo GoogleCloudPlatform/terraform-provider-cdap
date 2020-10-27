@@ -23,6 +23,11 @@ GCP Data Fusion specific helpers and modules can be found in the corresponding
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
 
+## Development
+
+To build a local version of the provider, run `go build -o ${test_dir}` 
+where `test_dir` is the path to a directory hosting test Terraform configs.
+
 ## Releasing
 
 Automated releases are handled by Github Actions.

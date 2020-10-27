@@ -1,6 +1,17 @@
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
-The CDAP provider is used to configure your
-[CDAP](https://docs.cdap.io/cdap/current/en/index.html) infrastructure.
+Add the following block to your Terraform configs
+(updating the version to the desired release):
+
+```hcl
+terraform {
+  required_providers {
+    cdap = {
+      source  = "GoogleCloudPlatform/cdap"
+      version = "~> 0.7.0"
+    }
+  }
+}
+```
 
 ## Installation
 

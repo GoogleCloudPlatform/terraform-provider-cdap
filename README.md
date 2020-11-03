@@ -16,7 +16,7 @@ GCP Data Fusion specific helpers and modules can be found in the corresponding
 
 ## Documentation
 
-- Website: https://googlecloudplatform.github.io/terraform-provider-cdap
+- Website: https://registry.terraform.io/providers/GoogleCloudPlatform/cdap/
 - Blog post: https://cloud.google.com/blog/products/data-analytics/open-source-etl-pipeline-tool
 
 ## Contributing

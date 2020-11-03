@@ -52,7 +52,7 @@ func generate(provider *schema.Provider, tmplDir, outputDir string) error {
 		return nil
 	}
 
-	resourcesOutputDir := filepath.Join(outputDir, "r")
+	resourcesOutputDir := filepath.Join(outputDir, "resources")
 	if err := os.MkdirAll(resourcesOutputDir, 0755); err != nil {
 		return err
 	}

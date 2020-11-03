@@ -31,5 +31,3 @@ The following fields are supported:
 * token
   (Optional):
   The OAuth token to use for all http calls to the instance.
-
-

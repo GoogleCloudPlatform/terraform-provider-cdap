@@ -22,3 +22,33 @@ GCP Data Fusion specific helpers and modules can be found in the corresponding
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+## Development
+
+To build a local version of the provider, run `go build -o ${test_dir}` 
+where `test_dir` is the path to a directory hosting test Terraform configs.
+
+## Releasing
+
+Automated releases are handled by Github Actions.
+
+1. Choose a version. It should match the regex `^v[0-9]+\.[0-9]+\.[0-9]+$`.
+   That is, a leading "v", followed by three period-separated numbers.
+
+   ```bash
+   version="v0.1.0"
+   ```
+
+1. Create the Git tag.
+
+   For binaries:
+
+   ```bash
+   git tag -a "${version}" -m "${version}"
+   ```
+
+1. Push the tag:
+
+   ```bash
+   git push origin --tags
+   ```

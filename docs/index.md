@@ -1,4 +1,6 @@
 <!-- AUTO GENERATED CODE. DO NOT EDIT MANUALLY. -->
+## Installation
+
 Add the following block to your Terraform configs
 (updating the version to the desired release):
 
@@ -12,22 +14,6 @@ terraform {
   }
 }
 ```
-
-## Installation
-
--  Download the provider binary from the
-   [releases page](https://github.com/GoogleCloudPlatform/terraform-provider-cdap/releases)
-   page.
-
--  Rename the binary to match the
-  [pattern](https://www.terraform.io/docs/configuration/providers.html#plugin-names-and-versions)
-  `terraform-provider-cdap_vX.Y.Z`).
-
--  Run `chmod u+x ./terraform-provider-cdap_vX.Y.Z` to make the binary
-   executable.
-
--  Move the binary to a location your Terraform configs can
-   [find it](https://www.terraform.io/docs/configuration/providers.html#third-party-plugins).
 
 ## Usage
 

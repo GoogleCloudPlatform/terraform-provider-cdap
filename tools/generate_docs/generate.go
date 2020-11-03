@@ -37,8 +37,7 @@ func generate(provider *schema.Provider, tmplDir, outputDir string) error {
 
 	var buf bytes.Buffer
 	args := map[string]interface{}{
-		"Schema":       provider.Schema,
-		"ResourcesMap": provider.ResourcesMap,
+		"Schema": provider.Schema,
 	}
 	if err := tmpl.Execute(&buf, args); err != nil {
 		return err
@@ -59,7 +58,7 @@ func generate(provider *schema.Provider, tmplDir, outputDir string) error {
 
 	for name, res := range provider.ResourcesMap {
 		tmplName := fmt.Sprintf("%s.md.tmpl", name)
-		tmpl, err := template.New(tmplName).ParseFiles(templateFiles(tmplDir, "r/"+tmplName)...)
+		tmpl, err := template.New(tmplName).ParseFiles(templateFiles(tmplDir, "resources/"+tmplName)...)
 		if err != nil {
 			return err
 		}

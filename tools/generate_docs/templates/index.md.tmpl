@@ -1,21 +1,5 @@
 {{template "header" -}}
 
-## Installation
-
-Add the following block to your Terraform configs
-(updating the version to the desired release):
-
-```hcl
-terraform {
-  required_providers {
-    cdap = {
-      source  = "GoogleCloudPlatform/cdap"
-      version = "~> 0.7.0"
-    }
-  }
-}
-```
-
 ## Usage
 
 An example of the CDAP provider initialized on a GCP Cloud Data Fusion instance:
@@ -38,9 +22,3 @@ provider "cdap" {
 ```
 
 {{template "schema" .}}
-
-## Resources
-
-{{range $r, $m := .ResourcesMap -}}
-* [{{$r}}](r/{{$r}}.md)
-{{end -}}

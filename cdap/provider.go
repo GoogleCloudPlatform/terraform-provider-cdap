@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/option"
 )

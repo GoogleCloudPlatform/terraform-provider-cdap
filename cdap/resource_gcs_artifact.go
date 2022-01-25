@@ -22,7 +22,7 @@ import (
 	"regexp"
 
 	"cloud.google.com/go/storage"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 var bucketPathRE = regexp.MustCompile(`^gs://(.+)/(.+)$`)

@@ -3,11 +3,11 @@ module terraform-provider-cdap
 go 1.16
 
 require (
-	cloud.google.com/go/storage v1.21.0
+	cloud.google.com/go/storage v1.23.0
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.10.1
-	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
-	google.golang.org/api v0.70.0
+	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb
+	google.golang.org/api v0.85.0
 )
 
 require (

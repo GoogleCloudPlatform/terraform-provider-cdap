@@ -5,7 +5,7 @@ go 1.16
 require (
 	cloud.google.com/go/storage v1.24.0
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.20.0
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.24.1
 	golang.org/x/oauth2 v0.0.0-20220622183110-fd043fe589d2
 	google.golang.org/api v0.91.0
 )

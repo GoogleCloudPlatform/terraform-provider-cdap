@@ -65,7 +65,7 @@ func resourceNamespaceRead(d *schema.ResourceData, m interface{}) error {
 func resourceNamespaceDelete(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", name)
+	addr := urlJoin(config.host, "/v3/unrecoverable/namespaces", name)
 
 	req, err := http.NewRequest(http.MethodDelete, addr, nil)
 	if err != nil {

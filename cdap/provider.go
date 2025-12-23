@@ -16,6 +16,7 @@
 package cdap
 
 import (
+  	"fmt"
 	"context"
 	"net/http"
 	"time"
@@ -27,6 +28,8 @@ import (
 )
 
 const defaultNamespace = "default"
+// This allows main.go to inject the value before the provider starts.
+var ProviderVersion = ""
 
 // Provider returns a terraform.ResourceProvider.
 func Provider() *schema.Provider {
@@ -61,6 +64,7 @@ type Config struct {
 	host          string
 	httpClient    *http.Client
 	storageClient *storage.Client
+	userAgent     string
 }
 
 func configureProvider(d *schema.ResourceData) (interface{}, error) {
@@ -80,9 +84,12 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		return nil, err
 	}
 
+  	userAgent := fmt.Sprintf("terraform-provider-cdap/%s", ProviderVersion)
+
 	return &Config{
 		host:          d.Get("host").(string),
 		httpClient:    httpClient,
 		storageClient: storageClient,
+		userAgent:     userAgent,
 	}, nil
 }

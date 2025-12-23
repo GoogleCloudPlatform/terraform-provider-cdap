@@ -37,10 +37,15 @@ func urlJoin(base string, paths ...string) string {
 	return fmt.Sprintf("%s/%s", strings.TrimRight(base, "/"), strings.TrimLeft(p, "/"))
 }
 
-func httpCall(client *http.Client, req *http.Request) ([]byte, error) {
-	log.Printf("%+v", req)
+func httpCall(config *Config, req *http.Request) ([]byte, error) {
+  	if config.userAgent != "" {
+    		req.Header.Set("User-Agent", config.userAgent)
+  	}
 
-	resp, err := client.Do(req)
+  	log.Printf("%+v", req)
+
+ 	resp, err := config.httpClient.Do(req)
+
 	if err != nil {
 		return nil, err
 	}

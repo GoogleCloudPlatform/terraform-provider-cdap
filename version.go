@@ -13,21 +13,8 @@
 // limitations under the License.
 
 // Package main serves a Terraform CDAP provider.
+
 package main
 
-import (
-	"terraform-provider-cdap/cdap"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-)
-
-func main() {
-  	cdap.ProviderVersion = Version
-
-	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: func() *schema.Provider {
-			return cdap.Provider()
-		},
-	})
-}
+// Version is manually maintained by the developer
+const Version = "0.12.0-SNAPSHOT"

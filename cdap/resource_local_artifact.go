@@ -101,18 +101,18 @@ func resourceLocalArtifactCreate(d *schema.ResourceData, m interface{}) error {
 func uploadArtifact(config *Config, d *schema.ResourceData, a *artifact) error {
 	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", a.name)
 
-	if err := uploadJar(config.httpClient, addr, a); err != nil {
+	if err := uploadJar(config, addr, a); err != nil {
 		return err
 	}
 	d.SetId(a.name)
 
-	if err := uploadProps(config.httpClient, addr, a); err != nil {
+	if err := uploadProps(config, addr, a); err != nil {
 		return err
 	}
 	return nil
 }
 
-func uploadJar(client *http.Client, addr string, a *artifact) error {
+func uploadJar(config *Config, addr string, a *artifact) error {
 	req, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(a.jar))
 	if err != nil {
 		return err
@@ -120,13 +120,13 @@ func uploadJar(client *http.Client, addr string, a *artifact) error {
 	req.Header = map[string][]string{}
 	req.Header.Add("Artifact-Version", a.version)
 	req.Header.Add("Artifact-Extends", strings.Join(a.config.Parents, "/"))
-	if _, err := httpCall(client, req); err != nil {
+	if _, err := httpCall(config, req); err != nil {
 		return err
 	}
 	return nil
 }
 
-func uploadProps(client *http.Client, artifactAddr string, a *artifact) error {
+func uploadProps(config *Config, artifactAddr string, a *artifact) error {
 	addr := urlJoin(artifactAddr, "/versions", a.version, "/properties")
 	b, err := json.Marshal(a.config.Properties)
 	if err != nil {
@@ -137,7 +137,7 @@ func uploadProps(client *http.Client, artifactAddr string, a *artifact) error {
 	if err != nil {
 		return err
 	}
-	if _, err := httpCall(client, req); err != nil {
+	if _, err := httpCall(config, req); err != nil {
 		return err
 	}
 	return nil
@@ -179,7 +179,7 @@ func resourceLocalArtifactDelete(d *schema.ResourceData, m interface{}) error {
 	if err != nil {
 		return err
 	}
-	_, err = httpCall(config.httpClient, req)
+	_, err = httpCall(config, req)
 	return err
 }
 
@@ -205,7 +205,7 @@ func artifactExists(config *Config, name, namespace string) (bool, error) {
 		return false, err
 	}
 
-	b, err := httpCall(config.httpClient, req)
+	b, err := httpCall(config, req)
 	if err != nil {
 		return false, err
 	}

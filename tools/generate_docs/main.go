@@ -33,7 +33,7 @@ var (
 var versionFile string
 
 func main() {
-  version := strings.TrimSpace(versionFile)
+  	version := strings.TrimSpace(versionFile)
 	flag.Parse()
 	if *tmplDir == "" {
 		log.Fatal("--template_dir must be set")

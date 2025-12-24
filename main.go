@@ -28,7 +28,7 @@ var versionFile string
 
 func main() {
 
-  version := strings.TrimSpace(versionFile)
+  	version := strings.TrimSpace(versionFile)
 
 	plugin.Serve(&plugin.ServeOpts{
 		ProviderFunc: func() *schema.Provider {

@@ -28,11 +28,9 @@ import (
 )
 
 const defaultNamespace = "default"
-// This allows main.go to inject the value before the provider starts.
-var ProviderVersion = ""
 
 // Provider returns a terraform.ResourceProvider.
-func Provider() *schema.Provider {
+func Provider(version string) *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"host": &schema.Schema{
@@ -46,7 +44,7 @@ func Provider() *schema.Provider {
 				Description: "The OAuth token to use for all http calls to the instance.",
 			},
 		},
-		ConfigureFunc: configureProvider,
+		ConfigureFunc: configureProvider(version),
 		ResourcesMap: map[string]*schema.Resource{
 			"cdap_application":           resourceApplication(),
 			"cdap_streaming_program_run": resourceStreamingProgramRun(),
@@ -67,29 +65,31 @@ type Config struct {
 	userAgent     string
 }
 
-func configureProvider(d *schema.ResourceData) (interface{}, error) {
-	ctx := context.Background()
+func configureProvider(version string) schema.ConfigureFunc {
+  return func(d *schema.ResourceData) (interface{}, error) {
+        ctx := context.Background()
 
-	httpClient := &http.Client{}
-	if token, ok := d.GetOk("token"); ok {
-		httpClient = oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
-			AccessToken: token.(string),
-			TokenType:   "Bearer",
-		}))
-	}
-	httpClient.Timeout = 30 * time.Minute
+        httpClient := &http.Client{}
+        if token, ok := d.GetOk("token"); ok {
+            httpClient = oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
+                AccessToken: token.(string),
+                TokenType:   "Bearer",
+            }))
+        }
+        httpClient.Timeout = 30 * time.Minute
 
-	storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly), option.WithoutAuthentication())
-	if err != nil {
-		return nil, err
-	}
+        storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly), option.WithoutAuthentication())
+        if err != nil {
+            return nil, err
+        }
 
-  	userAgent := fmt.Sprintf("terraform-provider-cdap/%s", ProviderVersion)
+        userAgent := fmt.Sprintf("terraform-provider-cdap/%s", version)
 
-	return &Config{
-		host:          d.Get("host").(string),
-		httpClient:    httpClient,
-		storageClient: storageClient,
-		userAgent:     userAgent,
-	}, nil
+        return &Config{
+            host:          d.Get("host").(string),
+            httpClient:    httpClient,
+            storageClient: storageClient,
+            userAgent:     userAgent,
+        }, nil
+    }
 }

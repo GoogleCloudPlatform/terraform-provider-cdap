@@ -23,11 +23,9 @@ import (
 )
 
 func main() {
-  	cdap.ProviderVersion = Version
-
 	plugin.Serve(&plugin.ServeOpts{
 		ProviderFunc: func() *schema.Provider {
-			return cdap.Provider()
+			return cdap.Provider(Version)
 		},
 	})
 }

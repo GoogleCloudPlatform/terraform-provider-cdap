@@ -38,13 +38,13 @@ func urlJoin(base string, paths ...string) string {
 }
 
 func httpCall(config *Config, req *http.Request) ([]byte, error) {
-  	if config.userAgent != "" {
-    		req.Header.Set("User-Agent", config.userAgent)
-  	}
+	if config.userAgent != "" {
+		req.Header.Set("User-Agent", config.userAgent)
+	}
 
-  	log.Printf("%+v", req)
+	log.Printf("%+v", req)
 
- 	resp, err := config.httpClient.Do(req)
+	resp, err := config.httpClient.Do(req)
 
 	if err != nil {
 		return nil, err

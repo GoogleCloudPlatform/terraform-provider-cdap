@@ -18,8 +18,8 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 	"strings"
-	_ "embed"
 
 	"terraform-provider-cdap/cdap"
 )
@@ -29,11 +29,12 @@ var (
 	outputDir = flag.String("output_dir", "", "Directory to write generated docs")
 )
 
-//go:embed VERSION
-var versionFile string
-
 func main() {
-  	version := strings.TrimSpace(versionFile)
+	versionFile, err := os.ReadFile("VERSION")
+	if err != nil {
+		log.Fatalf("Failed to read VERSION file: %v", err)
+	}
+	version := strings.TrimSpace(string(versionFile))
 	flag.Parse()
 	if *tmplDir == "" {
 		log.Fatal("--template_dir must be set")

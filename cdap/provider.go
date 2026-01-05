@@ -16,8 +16,8 @@
 package cdap
 
 import (
-  	"fmt"
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -66,30 +66,30 @@ type Config struct {
 }
 
 func configureProvider(version string) schema.ConfigureFunc {
-  return func(d *schema.ResourceData) (interface{}, error) {
-        ctx := context.Background()
+	return func(d *schema.ResourceData) (interface{}, error) {
+		ctx := context.Background()
 
-        httpClient := &http.Client{}
-        if token, ok := d.GetOk("token"); ok {
-            httpClient = oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
-                AccessToken: token.(string),
-                TokenType:   "Bearer",
-            }))
-        }
-        httpClient.Timeout = 30 * time.Minute
+		httpClient := &http.Client{}
+		if token, ok := d.GetOk("token"); ok {
+			httpClient = oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
+				AccessToken: token.(string),
+				TokenType:   "Bearer",
+			}))
+		}
+		httpClient.Timeout = 30 * time.Minute
 
-        storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly), option.WithoutAuthentication())
-        if err != nil {
-            return nil, err
-        }
+		storageClient, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly), option.WithoutAuthentication())
+		if err != nil {
+			return nil, err
+		}
 
-        userAgent := fmt.Sprintf("terraform-provider-cdap/%s", version)
+		userAgent := fmt.Sprintf("terraform-provider-cdap/%s", version)
 
-        return &Config{
-            host:          d.Get("host").(string),
-            httpClient:    httpClient,
-            storageClient: storageClient,
-            userAgent:     userAgent,
-        }, nil
-    }
+		return &Config{
+			host:          d.Get("host").(string),
+			httpClient:    httpClient,
+			storageClient: storageClient,
+			userAgent:     userAgent,
+		}, nil
+	}
 }

@@ -273,7 +273,7 @@ func resourceStreamingProgramRunDelete(d *schema.ResourceData, m interface{}) er
 	config := m.(*Config)
 
 	addr := getProgramAddr(config, d)
-    runsAddr := urlJoin(addr, "/runs")
+	runsAddr := urlJoin(addr, "/runs")
 	stopAddr := urlJoin(runsAddr, d.Id(), "/stop")
 
 	return resource.Retry(d.Timeout(schema.TimeoutDelete), func() *resource.RetryError {

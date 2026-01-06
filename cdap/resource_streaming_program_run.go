@@ -135,7 +135,7 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 		return err
 	}
 
-	if _, err := httpCall(config.httpClient, req); err != nil {
+	if _, err := httpCall(config, req); err != nil {
 		return err
 	}
 
@@ -219,7 +219,7 @@ func getRunByFauxID(config *Config, runsAddr string, fauxRunID string) (*run, er
 		return nil, err
 	}
 
-	b, err := httpCall(config.httpClient, req)
+	b, err := httpCall(config, req)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +246,7 @@ func getRunByID(config *Config, runsAddr string, runID string) (*run, error) {
 		return nil, err
 	}
 
-	b, err := httpCall(config.httpClient, req)
+	b, err := httpCall(config, req)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't retrived run with run id: %v: %s", runID, err)
 	}
@@ -265,7 +265,7 @@ func stopProgramRun(config *Config, stopAddr string) error {
 	if err != nil {
 		return err
 	}
-	_, err = httpCall(config.httpClient, req)
+	_, err = httpCall(config, req)
 	return err
 }
 
@@ -273,7 +273,7 @@ func resourceStreamingProgramRunDelete(d *schema.ResourceData, m interface{}) er
 	config := m.(*Config)
 
 	addr := getProgramAddr(config, d)
-    runsAddr := urlJoin(addr, "/runs")
+	runsAddr := urlJoin(addr, "/runs")
 	stopAddr := urlJoin(runsAddr, d.Id(), "/stop")
 
 	return resource.Retry(d.Timeout(schema.TimeoutDelete), func() *resource.RetryError {
@@ -311,7 +311,7 @@ func resourceStreamingProgramRunExists(d *schema.ResourceData, m interface{}) (b
 		return false, err
 	}
 
-	b, err := httpCall(config.httpClient, req)
+	b, err := httpCall(config, req)
 	if err != nil {
 		return false, err
 	}

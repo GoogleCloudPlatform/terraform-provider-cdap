@@ -16,16 +16,24 @@
 package main
 
 import (
-	"terraform-provider-cdap/cdap"
+	_ "embed"
+	"strings"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
+	"terraform-provider-cdap/cdap"
 )
 
+//go:embed VERSION
+var versionFile string
+
 func main() {
+
+	version := strings.TrimSpace(versionFile)
+
 	plugin.Serve(&plugin.ServeOpts{
 		ProviderFunc: func() *schema.Provider {
-			return cdap.Provider()
+			return cdap.Provider(version)
 		},
 	})
 }

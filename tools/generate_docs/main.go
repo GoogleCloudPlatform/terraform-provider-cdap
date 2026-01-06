@@ -18,6 +18,8 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
+	"strings"
 
 	"terraform-provider-cdap/cdap"
 )
@@ -28,6 +30,11 @@ var (
 )
 
 func main() {
+	versionFile, err := os.ReadFile("VERSION")
+	if err != nil {
+		log.Fatalf("Failed to read VERSION file: %v", err)
+	}
+	version := strings.TrimSpace(string(versionFile))
 	flag.Parse()
 	if *tmplDir == "" {
 		log.Fatal("--template_dir must be set")
@@ -35,7 +42,7 @@ func main() {
 	if *outputDir == "" {
 		log.Fatal("--output_dir must be set")
 	}
-	if err := generate(cdap.Provider(), *tmplDir, *outputDir); err != nil {
+	if err := generate(cdap.Provider(version), *tmplDir, *outputDir); err != nil {
 		log.Fatalf("failed to generate docs: %v", err)
 	}
 }

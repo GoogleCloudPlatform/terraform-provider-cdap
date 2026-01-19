@@ -53,6 +53,13 @@ func Provider(version string) *schema.Provider {
 			"cdap_namespace":             resourceNamespace(),
 			"cdap_namespace_preferences": resourceNamespacePreferences(),
 			"cdap_profile":               resourceProfile(),
+			"cdap_oauth_provider":        resourceOAuthProvider(),
+			"cdap_oauth_credential":      resourceOAuthCredential(),
+		},
+		DataSourcesMap: map[string]*schema.Resource{
+			"cdap_oauth_url":                   dataSourceOAuthURL(),
+			"cdap_oauth_credential":            dataSourceOAuthCredential(),
+			"cdap_oauth_credential_validation": dataSourceOAuthCredentialValidation(),
 		},
 	}
 }

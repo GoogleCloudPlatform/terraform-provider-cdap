@@ -85,6 +85,12 @@ func resourceOAuthProvider() *schema.Resource {
 				Default:     false,
 				Description: "Whether to reuse existing client credentials if they exist.",
 			},
+			"preserve_client_credentials": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Whether to preserve existing client credentials when deleting the provider.",
+			},
 		},
 	}
 }
@@ -141,9 +147,21 @@ func resourceOAuthProviderUpdate(d *schema.ResourceData, m interface{}) error {
 func resourceOAuthProviderDelete(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
 	name := d.Id()
-	addr := urlJoin(config.host, oauthProviderBasePath, name)
+	preserve := d.Get("preserve_client_credentials").(bool)
 
-	req, err := http.NewRequest(http.MethodDelete, addr, nil)
+	addr := urlJoin(config.host, oauthProviderBasePath, name)
+	addrURL, err := url.Parse(addr)
+	if err != nil {
+		return fmt.Errorf("failed to parse base URL: %v", err)
+	}
+
+	if preserve {
+		q := addrURL.Query()
+		q.Set("preserve_client_credentials", "true")
+		addrURL.RawQuery = q.Encode()
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, addrURL.String(), nil)
 	if err != nil {
 		return err
 	}

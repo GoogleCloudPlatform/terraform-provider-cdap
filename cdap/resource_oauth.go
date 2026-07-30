@@ -85,6 +85,12 @@ func resourceOAuthProvider() *schema.Resource {
 				Default:     false,
 				Description: "Whether to reuse existing client credentials if they exist.",
 			},
+      "noop_delete": {
+    		Type:        schema.TypeBool,
+        Optional:    true,
+        Default:     false,
+        Description: "If true, Terraform will remove the resource from state without making a DELETE API call to the CDAP instance.",
+      },
 		},
 	}
 }
@@ -139,6 +145,10 @@ func resourceOAuthProviderUpdate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceOAuthProviderDelete(d *schema.ResourceData, m interface{}) error {
+if d.Get("noop_delete").(bool) {
+		d.SetId("")
+		return nil
+	}
 	config := m.(*Config)
 	name := d.Id()
 	addr := urlJoin(config.host, oauthProviderBasePath, name)

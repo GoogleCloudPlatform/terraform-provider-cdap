@@ -30,7 +30,10 @@ import (
 	"google.golang.org/api/option"
 )
 
-const defaultNamespace = "default"
+const (
+	defaultNamespace    = "default"
+	defaultRetryTimeout = 90
+)
 
 // Provider returns a terraform.ResourceProvider.
 func Provider(version string) *schema.Provider {
@@ -45,6 +48,12 @@ func Provider(version string) *schema.Provider {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "The OAuth token to use for all http calls to the instance.",
+			},
+			"retry_timeout": &schema.Schema{
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     defaultRetryTimeout,
+				Description: "The maximum duration in seconds to retry an API call that fails with a transient error (any connection failure or HTTP 4xx/5xx except 401 and 404). Defaults to 90.",
 			},
 		},
 		ConfigureFunc: configureProvider(version),
@@ -75,6 +84,7 @@ type Config struct {
 	httpClient    *http.Client
 	storageClient *storage.Client
 	userAgent     string
+	retryTimeout  time.Duration
 }
 
 func configureProvider(version string) schema.ConfigureFunc {
@@ -104,12 +114,14 @@ func configureProvider(version string) schema.ConfigureFunc {
 		}
 
 		userAgent := fmt.Sprintf("terraform-provider-cdap/%s", version)
+		retryTimeout := time.Duration(d.Get("retry_timeout").(int)) * time.Second
 
 		return &Config{
 			host:          d.Get("host").(string),
 			httpClient:    httpClient,
 			storageClient: storageClient,
 			userAgent:     userAgent,
+			retryTimeout:  retryTimeout,
 		}, nil
 	}
 }

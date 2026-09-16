@@ -38,6 +38,10 @@ The following fields are supported:
   (Required):
   The address of the CDAP instance.
 
+* retry_timeout
+  (Optional):
+  The maximum duration in seconds to retry an API call that fails with a transient error (any connection failure or HTTP 4xx/5xx except 401 and 404). Defaults to 90.
+
 * token
   (Optional):
   The OAuth token to use for all http calls to the instance.

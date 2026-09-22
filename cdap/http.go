@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"path"
 	"strings"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
 type httpError struct {
@@ -44,19 +46,33 @@ func httpCall(config *Config, req *http.Request) ([]byte, error) {
 
 	log.Printf("%+v", req)
 
-	resp, err := config.httpClient.Do(req)
+	var respBytes []byte
+	err := resource.RetryContext(req.Context(), config.retryTimeout, func() *resource.RetryError {
+		if req.GetBody != nil {
+			req.Body, _ = req.GetBody()
+		}
 
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+		resp, err := config.httpClient.Do(req)
+		if err != nil {
+			return resource.RetryableError(err)
+		}
+		defer resp.Body.Close()
 
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, &httpError{code: resp.StatusCode, body: string(b)}
-	}
-	return b, nil
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return resource.RetryableError(err)
+		}
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			respBytes = b
+			return nil
+		}
+
+		httpErr := &httpError{code: resp.StatusCode, body: string(b)}
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusNotFound {
+			return resource.NonRetryableError(httpErr)
+		}
+		log.Printf("[WARN] %s %s failed with %d, retrying: %v", req.Method, req.URL.Path, resp.StatusCode, httpErr)
+		return resource.RetryableError(httpErr)
+	})
+	return respBytes, err
 }

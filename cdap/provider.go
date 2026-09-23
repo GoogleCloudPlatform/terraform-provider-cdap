@@ -60,6 +60,7 @@ func Provider(version string) *schema.Provider {
 			"cdap_profile":               resourceProfile(),
 			"cdap_oauth_provider":        resourceOAuthProvider(),
 			"cdap_oauth_credential":      resourceOAuthCredential(),
+			"cdap_wrangler_directive_config": resourceWranglerDirectiveConfig(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"cdap_oauth_url":                   dataSourceOAuthURL(),

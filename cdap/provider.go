@@ -78,7 +78,7 @@ func Provider(version string) *schema.Provider {
 							Optional:     true,
 							Default:      defaultRetryTimeout,
 							ValidateFunc: validation.IntAtLeast(1),
-							Description:  "Maximum time in seconds, measured from the first failure, during which a failed API call is retried. Defaults to 90.",
+							Description:  "Maximum time in seconds, including the first attempt, that a failed API call is retried for. Defaults to 90.",
 						},
 						"error_codes": &schema.Schema{
 							Type:        schema.TypeList,

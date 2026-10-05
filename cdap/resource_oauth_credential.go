@@ -108,7 +108,9 @@ func resourceOAuthCredentialCreate(d *schema.ResourceData, m interface{}) error 
 		return err
 	}
 
-	if _, err := httpCall(config, req); err != nil {
+	// The one-time authorization code is consumed by the first attempt, so a
+	// replay can never succeed. Never retry it automatically.
+	if _, err := httpCallOnce(config, req); err != nil {
 		return fmt.Errorf("failed to create oauth credential: %v", err)
 	}
 

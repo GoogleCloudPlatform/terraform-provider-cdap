@@ -33,7 +33,7 @@ type OAuthProviderRequest struct {
 	ClientSecret               string `json:"clientSecret"`
 	LoginUrl                   string `json:"loginURL"`
 	TokenRefreshUrl            string `json:"tokenRefreshURL"`
-	CredentialEncodingStrategy string `json:"credentialEncodingStrategy,omitempty"`
+	CredentialEncodingStrategy string `json:"strategy,omitempty"`
 	UserAgent                  string `json:"userAgent,omitempty"`
 }
 

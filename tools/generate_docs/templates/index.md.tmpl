@@ -48,7 +48,7 @@ provider "cdap" {
 }
 ```
 
-* Connection errors and allowlisted status codes are retried with exponential backoff. `400, 404, 405, 409, 410, 412, 422, 501` cannot be listed.
+* Connection errors and allowlisted status codes are retried with exponential backoff. Do not list codes the provider relies on being final, such as `404` and `409`.
 * Non-idempotent calls are never retried: `cdap_streaming_program_run` start and `cdap_oauth_credential` creation.
 * An artifact upload that returns `409` only after a retry, for a version that was absent beforehand, is treated as successful.
 * Adding `401`/`403` for a flaky authenticating proxy works, but an expired or invalid token then takes `timeout_seconds` to fail on **every** call; pair it with a short timeout (e.g. 20–30s).

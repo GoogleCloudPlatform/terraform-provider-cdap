@@ -46,20 +46,6 @@ var defaultRetryErrorCodes = []int{
 	http.StatusGatewayTimeout,
 }
 
-// nonRetryableErrorCodes may not be listed in error_codes: the provider relies
-// on these being returned promptly and meaning what they say (e.g. 404 for
-// existence checks, 409 for lost-response reconciliation).
-var nonRetryableErrorCodes = []int{
-	http.StatusBadRequest,
-	http.StatusNotFound,
-	http.StatusMethodNotAllowed,
-	http.StatusConflict,
-	http.StatusGone,
-	http.StatusPreconditionFailed,
-	http.StatusUnprocessableEntity,
-	http.StatusNotImplemented,
-}
-
 // Provider returns a terraform.ResourceProvider.
 func Provider(version string) *schema.Provider {
 	return &schema.Provider{
@@ -97,13 +83,10 @@ func Provider(version string) *schema.Provider {
 						"error_codes": &schema.Schema{
 							Type:        schema.TypeList,
 							Optional:    true,
-							Description: "HTTP status codes treated as transient and retried. Must be 400-599; codes whose meaning the provider relies on being final (400, 404, 405, 409, 410, 412, 422, 501) are rejected. Defaults to [429, 500, 502, 503, 504].",
+							Description: "HTTP status codes (400-599) treated as transient and retried. Avoid listing codes the provider relies on being final, such as 404 and 409. Defaults to [429, 500, 502, 503, 504].",
 							Elem: &schema.Schema{
-								Type: schema.TypeInt,
-								ValidateFunc: validation.All(
-									validation.IntBetween(400, 599),
-									validation.IntNotInSlice(nonRetryableErrorCodes),
-								),
+								Type:         schema.TypeInt,
+								ValidateFunc: validation.IntBetween(400, 599),
 							},
 						},
 					},

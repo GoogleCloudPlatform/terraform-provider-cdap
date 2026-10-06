@@ -41,16 +41,17 @@ provider "cdap" {
   token = data.google_client_config.current.access_token
 
   retry {
-    enabled     = true                      # default true when the block is present
-    timeout     = 90                        # seconds, includes the first attempt
-    error_codes = [429, 500, 502, 503, 504] # default; add 401/403 if a proxy in front of CDAP returns them transiently
+    enabled         = true                      # default true when the block is present; set false to toggle via a variable
+    timeout_seconds = 90                        # no new attempt starts after this; one in-flight request may still run up to the 30m client timeout
+    error_codes     = [429, 500, 502, 503, 504] # default
   }
 }
 ```
 
-* Connection errors and the listed status codes are retried with exponential backoff until `timeout` elapses; `501` is never retried.
-* Non-idempotent calls are never retried: `cdap_streaming_program_run` start and `cdap_oauth_credential` creation.
-* A `409 Conflict` received only after a retry on an artifact upload or profile disable is checked against the server state and treated as success.
+* Allowlisted status codes, connection resets/refusals, EOFs and timeouts are retried with exponential backoff. DNS and TLS failures fail fast. `400, 404, 405, 409, 410, 412, 422, 501` cannot be listed.
+* Non-idempotent calls are never retried: `cdap_streaming_program_run` start and `cdap_oauth_credential` creation. Requests with a non-replayable body are attempted once.
+* If a response is lost and the replay reports the work as already done (`409` on an artifact upload that was absent beforehand, `404` on a `DELETE`, "already stopped" on a program stop), the call is treated as successful.
+* Adding `401`/`403` for a flaky authenticating proxy works, but an expired or invalid token then takes `timeout_seconds` to fail on **every** call; pair it with a short timeout (e.g. 20–30s).
 
 Retry decisions are logged at `TF_LOG=WARN` and above.
 

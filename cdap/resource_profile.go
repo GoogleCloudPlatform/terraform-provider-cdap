@@ -206,13 +206,12 @@ func resourceProfileDelete(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 	if _, err := httpCall(config, req); err != nil {
-		// A retried disable can return 409 Conflict when an earlier attempt
-		// already disabled the profile. That is the state we want, so carry on
-		// to the delete, which independently fails if the profile is still enabled.
-		if !(wasRetried(err) && isHTTPErrorWithCode(err, http.StatusConflict)) {
+		// 409 means the profile is already disabled, which is the state we
+		// want. The delete below still fails if it is in fact enabled.
+		if !isHTTPErrorWithCode(err, http.StatusConflict) {
 			return err
 		}
-		log.Printf("[WARN] POST %s returned 409 after a retry; assuming profile %q is already disabled", req.URL.Path, name)
+		log.Printf("[WARN] POST %s returned 409; assuming profile %q is already disabled", req.URL.Path, name)
 	}
 
 	req, err = http.NewRequest(http.MethodDelete, addr, nil)

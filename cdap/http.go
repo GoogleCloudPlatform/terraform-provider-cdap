@@ -17,11 +17,14 @@ package cdap
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -63,6 +66,9 @@ func wasRetried(err error) bool {
 // retryPolicy controls how httpCall handles failed requests.
 type retryPolicy struct {
 	enabled bool
+	// timeout is the window during which new attempts may be started. A
+	// single in-flight attempt is bounded by the HTTP client timeout, not by
+	// this value.
 	timeout time.Duration
 	codes   map[int]struct{} // HTTP status codes considered transient
 }
@@ -78,13 +84,22 @@ func httpCall(config *Config, req *http.Request) ([]byte, error) {
 	if !config.retry.enabled {
 		return httpCallOnce(config, req)
 	}
+	// A body that cannot be rewound cannot be replayed safely.
+	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
+		log.Printf("[WARN] %s %s has a non-replayable body; retries disabled for this request", req.Method, req.URL.Path)
+		return httpCallOnce(config, req)
+	}
 
 	var respBytes []byte
 	attempt := 0
 	err := resource.RetryContext(req.Context(), config.retry.timeout, func() *resource.RetryError {
 		attempt++
 		if req.GetBody != nil {
-			req.Body, _ = req.GetBody()
+			body, err := req.GetBody()
+			if err != nil {
+				return resource.NonRetryableError(fmt.Errorf("failed to rewind request body: %w", err))
+			}
+			req.Body = body
 		}
 
 		b, err := doRequest(config, req)
@@ -96,15 +111,41 @@ func httpCall(config *Config, req *http.Request) ([]byte, error) {
 		var hErr *httpError
 		if errors.As(err, &hErr) {
 			hErr.retried = attempt > 1
-			// 501 is permanent by definition; everything else follows the allowlist.
-			if _, ok := config.retry.codes[hErr.code]; !ok || hErr.code == http.StatusNotImplemented {
+			// A DELETE that finds nothing only after a retry most likely
+			// succeeded on an earlier attempt whose response was lost.
+			if hErr.retried && req.Method == http.MethodDelete && hErr.code == http.StatusNotFound {
+				log.Printf("[WARN] %s %s returned 404 after a retry; treating as already deleted", req.Method, req.URL.Path)
+				return nil
+			}
+			if _, ok := config.retry.codes[hErr.code]; !ok {
 				return resource.NonRetryableError(err)
 			}
+		} else if !isRetryableTransportError(err) {
+			return resource.NonRetryableError(err)
 		}
-		log.Printf("[WARN] %s %s failed on attempt %d, retrying: %v", req.Method, req.URL.Path, attempt, err)
+		log.Printf("[WARN] %s %s failed on attempt %d: %v", req.Method, req.URL.Path, attempt, err)
 		return resource.RetryableError(err)
 	})
-	return respBytes, err
+	if err != nil {
+		return nil, err
+	}
+	return respBytes, nil
+}
+
+// isRetryableTransportError reports whether a non-HTTP error from the client
+// is plausibly transient. Anything else (DNS NXDOMAIN, TLS/certificate
+// failures, malformed URLs, content-length mismatches) fails fast.
+func isRetryableTransportError(err error) bool {
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return dnsErr.IsTemporary || dnsErr.IsTimeout
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNREFUSED) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
 }
 
 // httpCallOnce performs req exactly once, regardless of the retry policy.

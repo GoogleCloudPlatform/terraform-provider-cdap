@@ -228,6 +228,16 @@ func artifactExists(config *Config, name, namespace string) (bool, error) {
 }
 
 func uploadPluginJar(config *Config, addr string, jarBytes []byte, headers map[string]string) error {
+	// When retries are enabled, a 409 after a retry is ambiguous: either an
+	// earlier attempt succeeded, or the version already existed. Record which
+	// before uploading so that only the former is accepted as success.
+	version := headers["Artifact-Version"]
+	knownAbsent := false
+	if config.retry.enabled && version != "" {
+		exists, err := artifactVersionExists(config, addr, version)
+		knownAbsent = err == nil && !exists
+	}
+
 	req, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(jarBytes))
 	if err != nil {
 		return err
@@ -243,12 +253,9 @@ func uploadPluginJar(config *Config, addr string, jarBytes []byte, headers map[s
 		return nil
 	}
 
-	// A retried upload can fail with 409 Conflict when an earlier attempt
-	// succeeded server-side but its response was lost. If the requested
-	// version is now present the upload is effectively complete.
-	if version := headers["Artifact-Version"]; version != "" && wasRetried(err) && isHTTPErrorWithCode(err, http.StatusConflict) {
+	if knownAbsent && wasRetried(err) && isHTTPErrorWithCode(err, http.StatusConflict) {
 		if exists, checkErr := artifactVersionExists(config, addr, version); checkErr == nil && exists {
-			log.Printf("[WARN] POST %s returned 409 after a retry but version %s exists; treating the upload as successful", req.URL.Path, version)
+			log.Printf("[WARN] POST %s returned 409 after a retry but version %s now exists; treating the upload as successful", req.URL.Path, version)
 			return nil
 		}
 	}

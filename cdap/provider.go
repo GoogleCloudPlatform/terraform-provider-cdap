@@ -46,6 +46,20 @@ var defaultRetryErrorCodes = []int{
 	http.StatusGatewayTimeout,
 }
 
+// nonRetryableErrorCodes may not be listed in error_codes: the provider relies
+// on these being returned promptly and meaning what they say (e.g. 404 for
+// existence checks, 409 for lost-response reconciliation).
+var nonRetryableErrorCodes = []int{
+	http.StatusBadRequest,
+	http.StatusNotFound,
+	http.StatusMethodNotAllowed,
+	http.StatusConflict,
+	http.StatusGone,
+	http.StatusPreconditionFailed,
+	http.StatusUnprocessableEntity,
+	http.StatusNotImplemented,
+}
+
 // Provider returns a terraform.ResourceProvider.
 func Provider(version string) *schema.Provider {
 	return &schema.Provider{
@@ -71,24 +85,24 @@ func Provider(version string) *schema.Provider {
 							Type:        schema.TypeBool,
 							Optional:    true,
 							Default:     true,
-							Description: "Whether retries are active. Defaults to true when the retry block is present.",
+							Description: "Whether retries are active. Defaults to true when the retry block is present; set to false to disable retries from a variable without removing the block.",
 						},
-						"timeout": &schema.Schema{
+						"timeout_seconds": &schema.Schema{
 							Type:         schema.TypeInt,
 							Optional:     true,
 							Default:      defaultRetryTimeout,
 							ValidateFunc: validation.IntAtLeast(1),
-							Description:  "Maximum time in seconds, including the first attempt, that a failed API call is retried for. Defaults to 90.",
+							Description:  "No new attempt is started once this many seconds have elapsed since the first attempt began. A single in-flight request is bounded by the HTTP client timeout, not this value. Defaults to 90.",
 						},
 						"error_codes": &schema.Schema{
 							Type:        schema.TypeList,
 							Optional:    true,
-							Description: "HTTP status codes treated as transient and retried. Connection errors are always retried. Defaults to [429, 500, 502, 503, 504].",
+							Description: "HTTP status codes treated as transient and retried. Must be 400-599; codes whose meaning the provider relies on being final (400, 404, 405, 409, 410, 412, 422, 501) are rejected. Defaults to [429, 500, 502, 503, 504].",
 							Elem: &schema.Schema{
 								Type: schema.TypeInt,
 								ValidateFunc: validation.All(
 									validation.IntBetween(400, 599),
-									validation.IntNotInSlice([]int{http.StatusNotImplemented}),
+									validation.IntNotInSlice(nonRetryableErrorCodes),
 								),
 							},
 						},
@@ -176,7 +190,7 @@ func expandRetryPolicy(raw []interface{}) retryPolicy {
 	block := raw[0].(map[string]interface{})
 
 	policy.enabled = block["enabled"].(bool)
-	policy.timeout = time.Duration(block["timeout"].(int)) * time.Second
+	policy.timeout = time.Duration(block["timeout_seconds"].(int)) * time.Second
 
 	codes := defaultRetryErrorCodes
 	if l, ok := block["error_codes"].([]interface{}); ok && len(l) > 0 {

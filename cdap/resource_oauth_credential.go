@@ -135,7 +135,7 @@ func resourceOAuthCredentialRead(d *schema.ResourceData, m interface{}) error {
 	respBody, err := httpCall(config, req)
 	if err != nil {
 		// If 404, remove from state
-		if err.Error() == "404" {
+		if isHTTPErrorWithCode(err, http.StatusNotFound) {
 			d.SetId("")
 			return nil
 		}

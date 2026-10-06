@@ -268,12 +268,6 @@ func stopProgramRun(config *Config, stopAddr string) error {
 		return err
 	}
 	_, err = httpCall(config, req)
-	// A 4xx only after a retry usually means an earlier attempt already
-	// stopped the run. The caller re-polls the run status, which decides.
-	if wasRetried(err) && isHTTPErrorWithCode(err, http.StatusBadRequest, http.StatusNotFound, http.StatusConflict) {
-		log.Printf("[WARN] POST %s failed after a retry (%v); re-checking run status", req.URL.Path, err)
-		return nil
-	}
 	return err
 }
 

@@ -48,9 +48,9 @@ provider "cdap" {
 }
 ```
 
-* Allowlisted status codes, connection resets/refusals, EOFs and timeouts are retried with exponential backoff. DNS and TLS failures fail fast. `400, 404, 405, 409, 410, 412, 422, 501` cannot be listed.
-* Non-idempotent calls are never retried: `cdap_streaming_program_run` start and `cdap_oauth_credential` creation. Requests with a non-replayable body are attempted once.
-* If a response is lost and the replay reports the work as already done (`409` on an artifact upload that was absent beforehand, `404` on a `DELETE`, "already stopped" on a program stop), the call is treated as successful.
+* Connection errors and allowlisted status codes are retried with exponential backoff. `400, 404, 405, 409, 410, 412, 422, 501` cannot be listed.
+* Non-idempotent calls are never retried: `cdap_streaming_program_run` start and `cdap_oauth_credential` creation.
+* An artifact upload that returns `409` only after a retry, for a version that was absent beforehand, is treated as successful.
 * Adding `401`/`403` for a flaky authenticating proxy works, but an expired or invalid token then takes `timeout_seconds` to fail on **every** call; pair it with a short timeout (e.g. 20–30s).
 
 Retry decisions are logged at `TF_LOG=WARN` and above.

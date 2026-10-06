@@ -17,14 +17,11 @@ package cdap
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"path"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -102,15 +99,9 @@ func httpCall(config *Config, req *http.Request) ([]byte, error) {
 		var hErr *httpError
 		if errors.As(err, &hErr) {
 			hErr.retried = attempt > 1
-			// A DELETE that finds nothing only after a retry already succeeded.
-			if hErr.retried && req.Method == http.MethodDelete && hErr.code == http.StatusNotFound {
-				return nil
-			}
 			if _, ok := config.retry.codes[hErr.code]; !ok {
 				return resource.NonRetryableError(err)
 			}
-		} else if !isTransientNetError(err) {
-			return resource.NonRetryableError(err)
 		}
 		log.Printf("[WARN] %s %s failed on attempt %d: %v", req.Method, req.URL.Path, attempt, err)
 		return resource.RetryableError(err)
@@ -119,15 +110,6 @@ func httpCall(config *Config, req *http.Request) ([]byte, error) {
 		return nil, err
 	}
 	return respBytes, nil
-}
-
-// isTransientNetError is true for timeouts, dropped connections and resets;
-// DNS, TLS and malformed-request errors fail fast.
-func isTransientNetError(err error) bool {
-	var netErr net.Error
-	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
-		errors.Is(err, syscall.ECONNRESET) ||
-		(errors.As(err, &netErr) && netErr.Timeout())
 }
 
 // httpCallOnce performs req exactly once, regardless of the retry policy.

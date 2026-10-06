@@ -41,6 +41,7 @@ provider "cdap" {
   token = data.google_client_config.current.access_token
 
   retry {
+    enabled     = true                      # default true when the block is present
     timeout     = 90                        # seconds, includes the first attempt
     error_codes = [429, 500, 502, 503, 504] # default; add 401/403 if a proxy in front of CDAP returns them transiently
   }

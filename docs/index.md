@@ -40,6 +40,7 @@ provider "cdap" {
   token = data.google_client_config.current.access_token
 
   retry {
+    enabled     = true                      # default true when the block is present
     timeout     = 90                        # seconds, includes the first attempt
     error_codes = [429, 500, 502, 503, 504] # default; add 401/403 if a proxy in front of CDAP returns them transiently
   }
@@ -63,18 +64,6 @@ The following fields are supported:
 * retry
   (Optional):
   Retry policy for transient API failures. When omitted, every API call is attempted exactly once.
-
-* retry.enabled
-  (Optional):
-  Whether retries are active. Defaults to true when the retry block is present.
-
-* retry.error_codes
-  (Optional):
-  HTTP status codes treated as transient and retried. Connection errors are always retried. Defaults to [429, 500, 502, 503, 504].
-
-* retry.timeout
-  (Optional):
-  Maximum time in seconds, including the first attempt, that a failed API call is retried for. Defaults to 90.
 
 * token
   (Optional):

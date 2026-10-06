@@ -30,44 +30,9 @@ provider "cdap" {
 }
 ```
 
-## Retrying transient errors
+## Retries
 
-By default every CDAP API call is attempted exactly once. Opt in to automatic
-retries with the `retry` block:
-
-```
-provider "cdap" {
-  host  = "${google_data_fusion_instance.instance.service_endpoint}/api/"
-  token = data.google_client_config.current.access_token
-
-  retry {
-    # enabled     = true                      # default when the block is present
-    # timeout     = 90                        # seconds, measured from the first failure
-    # error_codes = [429, 500, 502, 503, 504] # default allowlist
-  }
-}
-```
-
-Behaviour when retries are enabled:
-
-* Connection-level failures and responses whose status code is in
-  `error_codes` are retried with exponential backoff (up to 10s between
-  attempts) until `timeout` seconds have elapsed.
-* `timeout` bounds the whole call, including the first attempt. If you upload
-  large artifacts, set it higher than your slowest expected upload.
-* `501 Not Implemented` is never retried, regardless of configuration.
-* Requests whose replay could create duplicate side effects are never retried:
-  starting a `cdap_streaming_program_run` and exchanging the one-time code of a
-  `cdap_oauth_credential`.
-* If an artifact upload or a profile disable returns `409 Conflict` **after** a
-  retry, the provider verifies the intended state (artifact version present /
-  profile disabled) and treats it as success. A `409` on the first attempt is
-  still reported as an error.
-
-If the instance sits behind an authenticating reverse proxy that can
-intermittently answer `401`/`403` during its own backend hiccups, those codes
-can be added explicitly. Note that an invalid token will then take `timeout`
-seconds to fail instead of failing immediately:
+Retries are off by default. Opt in with a `retry` block:
 
 ```
 provider "cdap" {
@@ -75,13 +40,17 @@ provider "cdap" {
   token = data.google_client_config.current.access_token
 
   retry {
-    timeout     = 120
-    error_codes = [401, 403, 429, 500, 502, 503, 504]
+    timeout     = 90                        # seconds, includes the first attempt
+    error_codes = [429, 500, 502, 503, 504] # default; add 401/403 if a proxy in front of CDAP returns them transiently
   }
 }
 ```
 
-Set `TF_LOG=INFO` (or `DEBUG`) to see each retry decision in the Terraform log.
+* Connection errors and the listed status codes are retried with exponential backoff until `timeout` elapses; `501` is never retried.
+* Non-idempotent calls are never retried: `cdap_streaming_program_run` start and `cdap_oauth_credential` creation.
+* A `409 Conflict` received only after a retry on an artifact upload or profile disable is checked against the server state and treated as success.
+
+Retry decisions are logged at `TF_LOG=WARN` and above.
 
 ## Argument Reference
 

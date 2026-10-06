@@ -118,7 +118,7 @@ func doRequest(config *Config, req *http.Request) ([]byte, error) {
 	if config.userAgent != "" {
 		req.Header.Set("User-Agent", config.userAgent)
 	}
-	log.Printf("%+v", req)
+	log.Printf("[DEBUG] %+v", req)
 
 	resp, err := config.httpClient.Do(req)
 	if err != nil {

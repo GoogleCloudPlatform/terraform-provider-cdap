@@ -228,6 +228,16 @@ func artifactExists(config *Config, name, namespace string) (bool, error) {
 }
 
 func uploadPluginJar(config *Config, addr string, jarBytes []byte, headers map[string]string) error {
+	// When retries are enabled, a 409 after a retry is ambiguous: either an
+	// earlier attempt succeeded, or the version already existed. Record which
+	// before uploading so that only the former is accepted as success.
+	version := headers["Artifact-Version"]
+	knownAbsent := false
+	if config.retry.enabled && version != "" {
+		exists, err := artifactVersionExists(config, addr, version)
+		knownAbsent = err == nil && !exists
+	}
+
 	req, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(jarBytes))
 	if err != nil {
 		return err
@@ -239,5 +249,31 @@ func uploadPluginJar(config *Config, addr string, jarBytes []byte, headers map[s
 	}
 
 	_, err = httpCall(config, req)
+	if err == nil {
+		return nil
+	}
+
+	if knownAbsent && wasRetried(err) && isHTTPErrorWithCode(err, http.StatusConflict) {
+		if exists, checkErr := artifactVersionExists(config, addr, version); checkErr == nil && exists {
+			log.Printf("[WARN] POST %s returned 409 after a retry but version %s now exists; treating the upload as successful", req.URL.Path, version)
+			return nil
+		}
+	}
 	return err
+}
+
+// artifactVersionExists reports whether the given version of the artifact at
+// artifactAddr (…/artifacts/{name}) exists.
+func artifactVersionExists(config *Config, artifactAddr, version string) (bool, error) {
+	req, err := http.NewRequest(http.MethodGet, urlJoin(artifactAddr, "/versions", version), nil)
+	if err != nil {
+		return false, err
+	}
+	if _, err := httpCall(config, req); err != nil {
+		if isHTTPErrorWithCode(err, http.StatusNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

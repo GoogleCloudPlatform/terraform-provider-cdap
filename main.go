@@ -17,6 +17,7 @@ package main
 
 import (
 	_ "embed"
+	"log"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -28,6 +29,10 @@ import (
 var versionFile string
 
 func main() {
+	// Terraform infers the level of a provider log line from a leading
+	// "[LEVEL]" tag. The default timestamp prefix would hide that tag and
+	// make every line INFO; Terraform adds its own timestamp anyway.
+	log.SetFlags(0)
 
 	version := strings.TrimSpace(versionFile)
 

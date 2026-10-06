@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"path"
 
@@ -205,7 +206,12 @@ func resourceProfileDelete(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 	if _, err := httpCall(config, req); err != nil {
-		return err
+		// 409 means the profile is already disabled, which is the state we
+		// want. The delete below still fails if it is in fact enabled.
+		if !isHTTPErrorWithCode(err, http.StatusConflict) {
+			return err
+		}
+		log.Printf("[WARN] POST %s returned 409; assuming profile %q is already disabled", req.URL.Path, name)
 	}
 
 	req, err = http.NewRequest(http.MethodDelete, addr, nil)

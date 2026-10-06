@@ -25,12 +25,26 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 )
 
-const defaultNamespace = "default"
+const (
+	defaultNamespace    = "default"
+	defaultRetryTimeout = 90
+)
+
+// defaultRetryErrorCodes are the HTTP status codes retried when a retry block
+// is configured without an explicit error_codes list.
+var defaultRetryErrorCodes = []int{
+	http.StatusTooManyRequests,
+	http.StatusInternalServerError,
+	http.StatusBadGateway,
+	http.StatusServiceUnavailable,
+	http.StatusGatewayTimeout,
+}
 
 // Provider returns a terraform.ResourceProvider.
 func Provider(version string) *schema.Provider {
@@ -45,6 +59,38 @@ func Provider(version string) *schema.Provider {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "The OAuth token to use for all http calls to the instance.",
+			},
+			"retry": &schema.Schema{
+				Type:        schema.TypeList,
+				Optional:    true,
+				MaxItems:    1,
+				Description: "Retry policy for transient API failures. When omitted, every API call is attempted exactly once.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"enabled": &schema.Schema{
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     true,
+							Description: "Whether retries are active. Defaults to true when the retry block is present; set to false to disable retries from a variable without removing the block.",
+						},
+						"timeout_seconds": &schema.Schema{
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Default:      defaultRetryTimeout,
+							ValidateFunc: validation.IntAtLeast(1),
+							Description:  "No new attempt is started once this many seconds have elapsed since the first attempt began. A single in-flight request is bounded by the HTTP client timeout, not this value. Defaults to 90.",
+						},
+						"error_codes": &schema.Schema{
+							Type:        schema.TypeList,
+							Optional:    true,
+							Description: "HTTP status codes (400-599) treated as transient and retried. Avoid listing codes the provider relies on being final, such as 404 and 409. Defaults to [429, 500, 502, 503, 504].",
+							Elem: &schema.Schema{
+								Type:         schema.TypeInt,
+								ValidateFunc: validation.IntBetween(400, 599),
+							},
+						},
+					},
+				},
 			},
 		},
 		ConfigureFunc: configureProvider(version),
@@ -76,6 +122,7 @@ type Config struct {
 	httpClient    *http.Client
 	storageClient *storage.Client
 	userAgent     string
+	retry         retryPolicy
 }
 
 func configureProvider(version string) schema.ConfigureFunc {
@@ -111,8 +158,37 @@ func configureProvider(version string) schema.ConfigureFunc {
 			httpClient:    httpClient,
 			storageClient: storageClient,
 			userAgent:     userAgent,
+			retry:         expandRetryPolicy(d.Get("retry").([]interface{})),
 		}, nil
 	}
+}
+
+// expandRetryPolicy converts the provider's retry block into a retryPolicy.
+// An absent block yields a disabled policy, preserving the historical
+// single-attempt behaviour.
+func expandRetryPolicy(raw []interface{}) retryPolicy {
+	policy := retryPolicy{codes: map[int]struct{}{}}
+	if len(raw) == 0 || raw[0] == nil {
+		return policy
+	}
+	block := raw[0].(map[string]interface{})
+
+	policy.enabled = block["enabled"].(bool)
+	policy.timeout = time.Duration(block["timeout_seconds"].(int)) * time.Second
+
+	codes := defaultRetryErrorCodes
+	if l, ok := block["error_codes"].([]interface{}); ok && len(l) > 0 {
+		codes = make([]int, 0, len(l))
+		for _, c := range l {
+			codes = append(codes, c.(int))
+		}
+	}
+	for _, c := range codes {
+		policy.codes[c] = struct{}{}
+	}
+
+	log.Printf("[INFO] cdap provider retry policy: enabled=%t timeout=%s error_codes=%v", policy.enabled, policy.timeout, codes)
+	return policy
 }
 
 func isGoogleAPIErrorWithCode(err error, codes ...int) bool {

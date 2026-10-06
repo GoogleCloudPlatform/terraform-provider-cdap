@@ -31,19 +31,16 @@ import (
 )
 
 type httpError struct {
-	code int
-	body string
-	// retried is true when the request was attempted more than once before
-	// this error was returned. A 409 Conflict seen only after a retry usually
-	// means an earlier attempt succeeded but its response was lost.
-	retried bool
+	code    int
+	body    string
+	retried bool // set when the request was attempted more than once
 }
 
 func (e *httpError) Error() string {
 	return fmt.Sprintf("%v: %v", e.code, e.body)
 }
 
-// isHTTPErrorWithCode reports whether err is an httpError with one of the given codes.
+// isHTTPErrorWithCode reports whether err is an httpError with one of codes.
 func isHTTPErrorWithCode(err error, codes ...int) bool {
 	var hErr *httpError
 	if !errors.As(err, &hErr) {
@@ -57,20 +54,18 @@ func isHTTPErrorWithCode(err error, codes ...int) bool {
 	return false
 }
 
-// wasRetried reports whether err is an httpError returned after at least one retry.
+// wasRetried reports whether err is an httpError returned after a retry.
 func wasRetried(err error) bool {
 	var hErr *httpError
 	return errors.As(err, &hErr) && hErr.retried
 }
 
-// retryPolicy controls how httpCall handles failed requests.
+// retryPolicy is the provider's retry configuration. timeout bounds when new
+// attempts may start; an in-flight request is bounded by the HTTP client timeout.
 type retryPolicy struct {
 	enabled bool
-	// timeout is the window during which new attempts may be started. A
-	// single in-flight attempt is bounded by the HTTP client timeout, not by
-	// this value.
 	timeout time.Duration
-	codes   map[int]struct{} // HTTP status codes considered transient
+	codes   map[int]struct{}
 }
 
 func urlJoin(base string, paths ...string) string {
@@ -78,15 +73,11 @@ func urlJoin(base string, paths ...string) string {
 	return fmt.Sprintf("%s/%s", strings.TrimRight(base, "/"), strings.TrimLeft(p, "/"))
 }
 
-// httpCall performs req, retrying it according to the provider's retry policy.
-// Use httpCallOnce for requests whose replay would cause duplicate side effects.
+// httpCall performs req, retrying per the provider's retry policy. Use
+// httpCallOnce for requests whose replay would cause duplicate side effects.
 func httpCall(config *Config, req *http.Request) ([]byte, error) {
-	if !config.retry.enabled {
-		return httpCallOnce(config, req)
-	}
-	// A body that cannot be rewound cannot be replayed safely.
-	if req.Body != nil && req.Body != http.NoBody && req.GetBody == nil {
-		log.Printf("[WARN] %s %s has a non-replayable body; retries disabled for this request", req.Method, req.URL.Path)
+	replayable := req.Body == nil || req.Body == http.NoBody || req.GetBody != nil
+	if !config.retry.enabled || !replayable {
 		return httpCallOnce(config, req)
 	}
 
@@ -97,7 +88,7 @@ func httpCall(config *Config, req *http.Request) ([]byte, error) {
 		if req.GetBody != nil {
 			body, err := req.GetBody()
 			if err != nil {
-				return resource.NonRetryableError(fmt.Errorf("failed to rewind request body: %w", err))
+				return resource.NonRetryableError(err)
 			}
 			req.Body = body
 		}
@@ -111,16 +102,14 @@ func httpCall(config *Config, req *http.Request) ([]byte, error) {
 		var hErr *httpError
 		if errors.As(err, &hErr) {
 			hErr.retried = attempt > 1
-			// A DELETE that finds nothing only after a retry most likely
-			// succeeded on an earlier attempt whose response was lost.
+			// A DELETE that finds nothing only after a retry already succeeded.
 			if hErr.retried && req.Method == http.MethodDelete && hErr.code == http.StatusNotFound {
-				log.Printf("[WARN] %s %s returned 404 after a retry; treating as already deleted", req.Method, req.URL.Path)
 				return nil
 			}
 			if _, ok := config.retry.codes[hErr.code]; !ok {
 				return resource.NonRetryableError(err)
 			}
-		} else if !isRetryableTransportError(err) {
+		} else if !isTransientNetError(err) {
 			return resource.NonRetryableError(err)
 		}
 		log.Printf("[WARN] %s %s failed on attempt %d: %v", req.Method, req.URL.Path, attempt, err)
@@ -132,20 +121,13 @@ func httpCall(config *Config, req *http.Request) ([]byte, error) {
 	return respBytes, nil
 }
 
-// isRetryableTransportError reports whether a non-HTTP error from the client
-// is plausibly transient. Anything else (DNS NXDOMAIN, TLS/certificate
-// failures, malformed URLs, content-length mismatches) fails fast.
-func isRetryableTransportError(err error) bool {
-	var dnsErr *net.DNSError
-	if errors.As(err, &dnsErr) {
-		return dnsErr.IsTemporary || dnsErr.IsTimeout
-	}
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
-		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNREFUSED) {
-		return true
-	}
+// isTransientNetError is true for timeouts, dropped connections and resets;
+// DNS, TLS and malformed-request errors fail fast.
+func isTransientNetError(err error) bool {
 	var netErr net.Error
-	return errors.As(err, &netErr) && netErr.Timeout()
+	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, syscall.ECONNRESET) ||
+		(errors.As(err, &netErr) && netErr.Timeout())
 }
 
 // httpCallOnce performs req exactly once, regardless of the retry policy.
@@ -153,8 +135,6 @@ func httpCallOnce(config *Config, req *http.Request) ([]byte, error) {
 	return doRequest(config, req)
 }
 
-// doRequest performs a single HTTP round trip and returns the response body
-// on 2xx, or an *httpError for any other status.
 func doRequest(config *Config, req *http.Request) ([]byte, error) {
 	if config.userAgent != "" {
 		req.Header.Set("User-Agent", config.userAgent)

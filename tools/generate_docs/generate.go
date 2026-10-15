@@ -37,7 +37,7 @@ func generate(provider *schema.Provider, tmplDir, outputDir string) error {
 
 	var buf bytes.Buffer
 	args := map[string]interface{}{
-		"Schema": provider.Schema,
+		"Schema": flattenSchema(provider.Schema),
 	}
 	if err := tmpl.Execute(&buf, args); err != nil {
 		return err

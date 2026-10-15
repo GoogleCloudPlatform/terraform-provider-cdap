@@ -15,21 +15,70 @@
 package cdap
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"path"
 	"strings"
+	"time"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 )
 
 type httpError struct {
-	code int
-	body string
+	code    int
+	body    string
+	retried bool // set when the request was attempted more than once
 }
 
 func (e *httpError) Error() string {
 	return fmt.Sprintf("%v: %v", e.code, e.body)
+}
+
+// isHTTPErrorWithCode reports whether err is an httpError with one of codes.
+func isHTTPErrorWithCode(err error, codes ...int) bool {
+	var hErr *httpError
+	if !errors.As(err, &hErr) {
+		return false
+	}
+	for _, c := range codes {
+		if hErr.code == c {
+			return true
+		}
+	}
+	return false
+}
+
+// wasRetried reports whether err is an httpError returned after a retry.
+func wasRetried(err error) bool {
+	var hErr *httpError
+	return errors.As(err, &hErr) && hErr.retried
+}
+
+// retryPolicy is the provider's retry configuration. timeout bounds when new
+// attempts may start; an in-flight request is bounded by the HTTP client timeout.
+// maxAttempts of 0 means no attempt limit.
+type retryPolicy struct {
+	enabled     bool
+	timeout     time.Duration
+	maxAttempts int
+}
+
+func isRetryableStatusCode(code int) bool {
+	switch code {
+	case http.StatusRequestTimeout,
+		http.StatusTooManyRequests,
+		http.StatusInternalServerError,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
+	}
 }
 
 func urlJoin(base string, paths ...string) string {
@@ -37,15 +86,105 @@ func urlJoin(base string, paths ...string) string {
 	return fmt.Sprintf("%s/%s", strings.TrimRight(base, "/"), strings.TrimLeft(p, "/"))
 }
 
+// httpCall performs req, retrying per the provider's retry policy. Use
+// httpCallOnce for requests whose replay would cause duplicate side effects.
 func httpCall(config *Config, req *http.Request) ([]byte, error) {
+	if !config.retry.enabled {
+		return httpCallOnce(config, req)
+	}
+
+	var respBytes []byte
+	var lastErr error
+	var attempt int
+	deadline := time.Now().Add(config.retry.timeout)
+
+	err := resource.RetryContext(req.Context(), retryMaxTimeout(config), func() *resource.RetryError {
+		if attempt > 0 && time.Now().After(deadline) {
+			return resource.NonRetryableError(lastErr)
+		}
+		attempt++
+		if err := rewindBody(req, attempt); err != nil {
+			return resource.NonRetryableError(err)
+		}
+
+		b, err := doRequest(config, req)
+		if err == nil {
+			respBytes = b
+			return nil
+		}
+		lastErr = err
+
+		if isIdempotentDeleteSuccess(req, err, attempt) {
+			log.Printf("[WARN] DELETE %s returned 404 after a retry; treating as successful", req.URL.Path)
+			return nil
+		}
+		if !shouldRetry(req, err, attempt) {
+			return resource.NonRetryableError(err)
+		}
+		if budgetExhausted(config, attempt, deadline) {
+			log.Printf("[WARN] %s %s failed on attempt %d (max_attempts or timeout reached): %v", req.Method, req.URL.Path, attempt, err)
+			return resource.NonRetryableError(err)
+		}
+
+		log.Printf("[WARN] %s %s failed on attempt %d: %v", req.Method, req.URL.Path, attempt, err)
+		return resource.RetryableError(err)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return respBytes, nil
+}
+
+func retryMaxTimeout(config *Config) time.Duration {
+	maxTimeout := config.httpClient.Timeout
+	if maxTimeout <= 0 {
+		maxTimeout = 30 * time.Minute
+	}
+	return maxTimeout + config.retry.timeout + time.Minute
+}
+
+func rewindBody(req *http.Request, attempt int) error {
+	if attempt <= 1 || req.Body == nil || req.Body == http.NoBody {
+		return nil
+	}
+	body, err := req.GetBody()
+	if err != nil {
+		return err
+	}
+	req.Body = body
+	return nil
+}
+
+func isIdempotentDeleteSuccess(req *http.Request, err error, attempt int) bool {
+	return attempt > 1 && req.Method == http.MethodDelete && isHTTPErrorWithCode(err, http.StatusNotFound)
+}
+
+func shouldRetry(req *http.Request, err error, attempt int) bool {
+	var hErr *httpError
+	if errors.As(err, &hErr) {
+		hErr.retried = attempt > 1
+		return isRetryableStatusCode(hErr.code)
+	}
+	return !errors.Is(err, context.Canceled) && req.Context().Err() == nil
+}
+
+func budgetExhausted(config *Config, attempt int, deadline time.Time) bool {
+	maxReached := config.retry.maxAttempts > 0 && attempt >= config.retry.maxAttempts
+	return maxReached || time.Until(deadline) < 500*time.Millisecond
+}
+
+// httpCallOnce performs req exactly once, regardless of the retry policy.
+func httpCallOnce(config *Config, req *http.Request) ([]byte, error) {
+	return doRequest(config, req)
+}
+
+func doRequest(config *Config, req *http.Request) ([]byte, error) {
 	if config.userAgent != "" {
 		req.Header.Set("User-Agent", config.userAgent)
 	}
-
-	log.Printf("%+v", req)
+	log.Printf("[DEBUG] %+v", req)
 
 	resp, err := config.httpClient.Do(req)
-
 	if err != nil {
 		return nil, err
 	}

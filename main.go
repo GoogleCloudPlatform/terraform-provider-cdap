@@ -17,6 +17,7 @@ package main
 
 import (
 	_ "embed"
+	"log"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -28,6 +29,7 @@ import (
 var versionFile string
 
 func main() {
+	log.SetFlags(0)
 
 	version := strings.TrimSpace(versionFile)
 

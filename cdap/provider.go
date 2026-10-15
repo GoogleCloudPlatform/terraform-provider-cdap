@@ -25,12 +25,17 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 )
 
-const defaultNamespace = "default"
+const (
+	defaultNamespace        = "default"
+	defaultRetryTimeout     = 90
+	defaultRetryMaxAttempts = 3
+)
 
 // Provider returns a terraform.ResourceProvider.
 func Provider(version string) *schema.Provider {
@@ -45,6 +50,36 @@ func Provider(version string) *schema.Provider {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "The OAuth token to use for all http calls to the instance.",
+			},
+			"retry": &schema.Schema{
+				Type:        schema.TypeList,
+				Optional:    true,
+				MaxItems:    1,
+				Description: "Retry policy for transient API failures. When omitted, every API call is attempted exactly once.",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"enabled": &schema.Schema{
+							Type:        schema.TypeBool,
+							Optional:    true,
+							Default:     false,
+							Description: "Whether retries are active. Defaults to false.",
+						},
+						"timeout_seconds": &schema.Schema{
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Default:      defaultRetryTimeout,
+							ValidateFunc: validation.IntAtLeast(1),
+							Description:  "No new attempt is started once this many seconds have elapsed since the first attempt began. A single in-flight request is bounded by the HTTP client timeout, not this value. Defaults to 90 (90s) when enabled is set to true.",
+						},
+						"max_attempts": &schema.Schema{
+							Type:         schema.TypeInt,
+							Optional:     true,
+							Default:      defaultRetryMaxAttempts,
+							ValidateFunc: validation.IntAtLeast(0),
+							Description:  "Maximum number of attempts per API call, including the first. Defaults to 3 when enabled is set to true; 0 means attempts are limited only by timeout_seconds. Whichever limit is reached first stops retrying.",
+						},
+					},
+				},
 			},
 		},
 		ConfigureFunc: configureProvider(version),
@@ -75,6 +110,7 @@ type Config struct {
 	httpClient    *http.Client
 	storageClient *storage.Client
 	userAgent     string
+	retry         retryPolicy
 }
 
 func configureProvider(version string) schema.ConfigureFunc {
@@ -110,8 +146,27 @@ func configureProvider(version string) schema.ConfigureFunc {
 			httpClient:    httpClient,
 			storageClient: storageClient,
 			userAgent:     userAgent,
+			retry:         expandRetryPolicy(d.Get("retry").([]interface{})),
 		}, nil
 	}
+}
+
+// expandRetryPolicy converts the provider's retry block into a retryPolicy.
+// An absent block yields a disabled policy, preserving the historical
+// single-attempt behaviour.
+func expandRetryPolicy(raw []interface{}) retryPolicy {
+	if len(raw) == 0 || raw[0] == nil {
+		return retryPolicy{}
+	}
+	block := raw[0].(map[string]interface{})
+
+	policy := retryPolicy{
+		enabled:     block["enabled"].(bool),
+		timeout:     time.Duration(block["timeout_seconds"].(int)) * time.Second,
+		maxAttempts: block["max_attempts"].(int),
+	}
+	log.Printf("[INFO] cdap provider retry policy: enabled=%t timeout=%s max_attempts=%d", policy.enabled, policy.timeout, policy.maxAttempts)
+	return policy
 }
 
 func isGoogleAPIErrorWithCode(err error, codes ...int) bool {

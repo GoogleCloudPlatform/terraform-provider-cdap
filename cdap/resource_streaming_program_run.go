@@ -135,7 +135,9 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 		return err
 	}
 
-	if _, err := httpCall(config, req); err != nil {
+	// Starting a program is not idempotent: a replayed request creates a second
+	// run. Never retry it automatically.
+	if _, err := httpCallOnce(config, req); err != nil {
 		return err
 	}
 

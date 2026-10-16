@@ -228,6 +228,20 @@ func artifactExists(config *Config, name, namespace string) (bool, error) {
 }
 
 func uploadPluginJar(config *Config, addr string, jarBytes []byte, headers map[string]string) error {
+	// When retries are enabled, an upload error is ambiguous: CDAP may have
+	// stored the JAR even though the response was lost (e.g. a proxy 500), and
+	// a replay then returns 409. Check before uploading so that only a version
+	// created by this call is accepted as success.
+	version := headers["Artifact-Version"]
+	var exists bool
+	if config.retry.enabled && version != "" {
+		var err error
+		if exists, err = artifactVersionExists(config, addr, version); err != nil {
+			return fmt.Errorf("checking whether artifact version %s exists before upload: %w", version, err)
+		}
+	}
+	reconcile := config.retry.enabled && version != "" && !exists
+
 	req, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(jarBytes))
 	if err != nil {
 		return err
@@ -239,5 +253,39 @@ func uploadPluginJar(config *Config, addr string, jarBytes []byte, headers map[s
 	}
 
 	_, err = httpCall(config, req)
+	if err == nil || !reconcile {
+		return err
+	}
+	if isHTTPErrorWithCode(err, http.StatusConflict) {
+		if !wasRetried(err) {
+			// Created by someone else between the pre-check and the POST.
+			return err
+		}
+		log.Printf("[WARN] POST %s returned 409 after a retry; treating upload of version %s as successful", req.URL.Path, version)
+		return nil
+	}
+	// The final attempt may have been stored even though its response was an
+	// error. The version was absent before, so if it exists now this call
+	// created it.
+	if present, checkErr := artifactVersionExists(config, addr, version); checkErr == nil && present {
+		log.Printf("[WARN] POST %s failed (%v) but version %s now exists; treating upload as successful", req.URL.Path, err, version)
+		return nil
+	}
 	return err
+}
+
+// artifactVersionExists reports whether the given version of the artifact at
+// artifactAddr (…/artifacts/{name}) exists.
+func artifactVersionExists(config *Config, artifactAddr, version string) (bool, error) {
+	req, err := http.NewRequest(http.MethodGet, urlJoin(artifactAddr, "/versions", version), nil)
+	if err != nil {
+		return false, err
+	}
+	if _, err := httpCall(config, req); err != nil {
+		if isHTTPErrorWithCode(err, http.StatusNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

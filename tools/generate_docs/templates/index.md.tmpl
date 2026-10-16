@@ -31,4 +31,27 @@ provider "cdap" {
 }
 ```
 
+## Retries
+
+Retries are off by default. Opt in with a `retry` block:
+
+```
+provider "cdap" {
+  host  = "${google_data_fusion_instance.instance.service_endpoint}/api/"
+  token = data.google_client_config.current.access_token
+
+  retry {
+    enabled         = true # default is false; set to true to enable retries
+    timeout_seconds = 90   # default is 90s when enabled is set to true; no new attempt starts after this (one in-flight request may still run up to the 30m client timeout)
+    max_attempts    = 3    # default is 3 when enabled is set to true; 0 = limited only by timeout_seconds
+  }
+}
+```
+
+* Connection errors and transient HTTP status codes (`429`, `500`, `502`, `503`, `504`) are retried with exponential backoff (0.5s, 1s, 2s, … capped at 10s) until `timeout_seconds` elapses or `max_attempts` is reached, whichever comes first.
+* Non-idempotent calls are never retried: `cdap_streaming_program_run` start and `cdap_oauth_credential` creation.
+* Artifact uploads are reconciled for versions that were absent before the upload: a `409` returned after a retry, or a failed final attempt after which the version exists, is treated as successful. A version that already existed is never adopted.
+
+Retry decisions are logged at `TF_LOG=WARN` and above.
+
 {{template "schema" .}}

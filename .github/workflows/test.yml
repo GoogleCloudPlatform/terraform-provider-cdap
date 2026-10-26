@@ -1,11 +1,15 @@
 name: test
 on: [pull_request]
+permissions:
+  contents: read
 jobs:
   gotest:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - uses: actions/checkout@0717577d45739eb3c851188b29f50ed6c0b2194e # v2
+    - uses: actions/setup-go@bfdd3570ce990073878bf10f6b2d79082de49492 # v2
       with:
         go-version: '1.26'
     - run: go test ./...

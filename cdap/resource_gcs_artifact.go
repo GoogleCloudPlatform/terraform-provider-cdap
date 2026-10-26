@@ -116,7 +116,7 @@ func readObject(ctx context.Context, storageClient *storage.Client, path string)
 	// matches is in the form [matched substring, bucket name, object name].
 	matches := bucketPathRE.FindStringSubmatch(path)
 	if len(matches) != 3 {
-		return nil, fmt.Errorf("unexpected bucket path: got %q submatches, want 3", len(matches))
+		return nil, fmt.Errorf("unexpected bucket path: got %d submatches, want 3", len(matches))
 	}
 	bucketName, objectPath := matches[1], matches[2]
 	obj := storageClient.Bucket(bucketName).Object(objectPath)

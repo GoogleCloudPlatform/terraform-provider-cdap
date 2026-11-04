@@ -17,6 +17,7 @@ package cdap
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -102,13 +103,27 @@ func uploadArtifact(config *Config, d *schema.ResourceData, a *artifact) error {
 	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", a.name)
 
 	if err := uploadJar(config, addr, a); err != nil {
+		var hErr *httpError
+		if !errors.As(err, &hErr) || hErr.code == http.StatusRequestTimeout || hErr.code >= http.StatusInternalServerError {
+			// A transport error or gateway timeout (408/5xx) can occur while CDAP
+			// still commits the JAR in the background. Best-effort delete prevents
+			// leaving a JAR-only orphan that fails with 409 on the next apply.
+			_ = deleteArtifactVersion(config, addr, a.version)
+		}
 		return err
 	}
-	d.SetId(a.name)
 
 	if err := uploadProps(config, addr, a); err != nil {
-		return err
+		if rbErr := deleteArtifactVersion(config, addr, a.version); rbErr != nil {
+			// Rollback failed; set the resource ID so Terraform marks the resource
+			// tainted and replaces it on the next apply instead of leaving an
+			// untracked orphan that fails with 409.
+			d.SetId(a.name)
+			return fmt.Errorf("uploading properties for artifact %s version %s failed: %v; rollback delete also failed, marking resource tainted: %v", a.name, a.version, err, rbErr)
+		}
+		return fmt.Errorf("uploading properties for artifact %s version %s failed (uploaded JAR was rolled back): %w", a.name, a.version, err)
 	}
+	d.SetId(a.name)
 	return nil
 }
 
@@ -125,6 +140,9 @@ func uploadJar(config *Config, addr string, a *artifact) error {
 }
 
 func uploadProps(config *Config, artifactAddr string, a *artifact) error {
+	if a.config == nil || a.config.Properties == nil {
+		return nil
+	}
 	addr := urlJoin(artifactAddr, "/versions", a.version, "/properties")
 	b, err := json.Marshal(a.config.Properties)
 	if err != nil {
@@ -170,15 +188,24 @@ func resourceLocalArtifactRead(d *schema.ResourceData, m interface{}) error {
 
 func resourceLocalArtifactDelete(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
-	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", name, "/versions", d.Get("version").(string))
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", d.Get("name").(string))
+	return deleteArtifactVersion(config, addr, d.Get("version").(string))
+}
 
+func deleteArtifactVersion(config *Config, artifactAddr, version string) error {
+	addr := urlJoin(artifactAddr, "/versions", version)
 	req, err := http.NewRequest(http.MethodDelete, addr, nil)
 	if err != nil {
 		return err
 	}
-	_, err = httpCall(config, req)
-	return err
+	if _, err := httpCall(config, req); err != nil {
+		var hErr *httpError
+		if errors.As(err, &hErr) && hErr.code == http.StatusNotFound {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func resourceLocalArtifactExists(d *schema.ResourceData, m interface{}) (bool, error) {

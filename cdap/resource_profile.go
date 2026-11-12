@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"path"
 
@@ -205,7 +206,13 @@ func resourceProfileDelete(d *schema.ResourceData, m interface{}) error {
 		return err
 	}
 	if _, err := httpCall(config, req); err != nil {
-		return err
+		// 409 means the profile is already disabled in CDAP, which is the state
+		// required by the provider before deletion. The DELETE request below
+		// still fails if the profile is enabled.
+		if !isHTTPErrorWithCode(err, http.StatusConflict) {
+			return err
+		}
+		log.Printf("[WARN] POST %s returned 409; assuming profile %q is already disabled", req.URL.Path, name)
 	}
 
 	req, err = http.NewRequest(http.MethodDelete, addr, nil)

@@ -135,7 +135,9 @@ func resourceStreamingProgramRunCreate(d *schema.ResourceData, m interface{}) er
 		return err
 	}
 
-	if _, err := httpCall(config, req); err != nil {
+	// Starting a program is not idempotent: a replayed request creates a second
+	// run. Never retry it automatically.
+	if _, err := httpCallOnce(config, req); err != nil {
 		return err
 	}
 
@@ -265,8 +267,14 @@ func stopProgramRun(config *Config, stopAddr string) error {
 	if err != nil {
 		return err
 	}
-	_, err = httpCall(config, req)
-	return err
+	if _, err := httpCall(config, req); err != nil {
+		if isHTTPErrorWithCode(err, http.StatusConflict) || (wasRetried(err) && isHTTPErrorWithCode(err, http.StatusBadRequest)) {
+			log.Printf("[WARN] POST %s returned %v; assuming program run is already stopping or stopped", req.URL.Path, err)
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func resourceStreamingProgramRunDelete(d *schema.ResourceData, m interface{}) error {

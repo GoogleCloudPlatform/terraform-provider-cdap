@@ -106,11 +106,18 @@ func uploadArtifact(config *Config, d *schema.ResourceData, a *artifact) error {
 	if err := uploadJar(config, addr, a); err != nil {
 		return err
 	}
-	d.SetId(a.name)
 
 	if err := uploadProps(config, addr, a); err != nil {
-		return err
+		if rbErr := deleteArtifactVersion(config, addr, a.version); rbErr != nil {
+			// Rollback failed; set the resource ID so Terraform marks the resource
+			// tainted and replaces it on the next apply instead of leaving an
+			// untracked orphan that fails with 409.
+			d.SetId(a.name)
+			return fmt.Errorf("uploading properties for artifact %q version %q failed (rollback delete also failed with %v, marking resource tainted): %w", a.name, a.version, rbErr, err)
+		}
+		return fmt.Errorf("uploading properties for artifact %q version %q failed (uploaded JAR was rolled back): %w", a.name, a.version, err)
 	}
+	d.SetId(a.name)
 	return nil
 }
 
@@ -127,6 +134,9 @@ func uploadJar(config *Config, addr string, a *artifact) error {
 }
 
 func uploadProps(config *Config, artifactAddr string, a *artifact) error {
+	if a.config == nil || len(a.config.Properties) == 0 {
+		return nil
+	}
 	addr := urlJoin(artifactAddr, "/versions", a.version, "/properties")
 	b, err := json.Marshal(a.config.Properties)
 	if err != nil {
@@ -172,15 +182,23 @@ func resourceLocalArtifactRead(d *schema.ResourceData, m interface{}) error {
 
 func resourceLocalArtifactDelete(d *schema.ResourceData, m interface{}) error {
 	config := m.(*Config)
-	name := d.Get("name").(string)
-	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", name, "/versions", d.Get("version").(string))
+	addr := urlJoin(config.host, "/v3/namespaces", d.Get("namespace").(string), "/artifacts", d.Get("name").(string))
+	return deleteArtifactVersion(config, addr, d.Get("version").(string))
+}
 
+func deleteArtifactVersion(config *Config, artifactAddr, version string) error {
+	addr := urlJoin(artifactAddr, "/versions", version)
 	req, err := http.NewRequest(http.MethodDelete, addr, nil)
 	if err != nil {
 		return err
 	}
-	_, err = httpCall(config, req)
-	return err
+	if _, err := httpCall(config, req); err != nil {
+		if isHTTPErrorWithCode(err, http.StatusNotFound) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func resourceLocalArtifactExists(d *schema.ResourceData, m interface{}) (bool, error) {
@@ -230,19 +248,19 @@ func artifactExists(config *Config, name, namespace string) (bool, error) {
 }
 
 func uploadPluginJar(config *Config, addr string, jarBytes []byte, headers map[string]string) error {
-	// When retries are enabled, an upload error is ambiguous: CDAP may have
-	// stored the JAR even though the response was lost (e.g. a proxy 500), and
-	// a replay then returns 409. Check before uploading so that only a version
-	// created by this call is accepted as success.
+	// An upload error is ambiguous: CDAP may have stored the JAR even though
+	// the response was lost (e.g. a proxy 500 or timeout), and a replay or the
+	// next apply then returns 409. Check before uploading whether the version
+	// is already present so we never adopt or delete a pre-existing artifact.
 	version := headers["Artifact-Version"]
-	var exists bool
-	if config.retry.enabled && version != "" {
-		var err error
-		if exists, err = artifactVersionExists(config, addr, version); err != nil {
-			return fmt.Errorf("checking whether artifact version %s exists before upload: %w", version, err)
+	var absentBefore bool
+	if version != "" {
+		exists, err := artifactVersionExists(config, addr, version)
+		if err != nil {
+			return fmt.Errorf("checking whether artifact version %q exists before upload: %w", version, err)
 		}
+		absentBefore = !exists
 	}
-	reconcile := config.retry.enabled && version != "" && !exists
 
 	req, err := http.NewRequest(http.MethodPost, addr, bytes.NewReader(jarBytes))
 	if err != nil {
@@ -255,28 +273,44 @@ func uploadPluginJar(config *Config, addr string, jarBytes []byte, headers map[s
 	}
 
 	_, err = httpCall(config, req)
-	if err == nil || !reconcile {
+	if err == nil || !absentBefore {
 		return err
 	}
-	if isHTTPErrorWithCode(err, http.StatusConflict) {
-		if !wasRetried(err) {
-			// Created by someone else between the pre-check and the POST.
-			return err
-		}
-		log.Printf("[WARN] POST %s returned 409 after a retry; treating upload of version %s as successful", req.URL.Path, version)
+	if config.retry.enabled && isReconciledUpload(config, addr, version, req.URL.Path, err) {
 		return nil
+	}
+	if isAmbiguousWriteError(err) {
+		// A transport error or gateway timeout (408/5xx) can occur while CDAP
+		// still commits the JAR in the background. Best-effort delete prevents
+		// leaving a JAR-only orphan that fails with 409 on the next apply,
+		// without ever deleting a pre-existing unmanaged artifact.
+		if delErr := deleteArtifactVersion(config, addr, version); delErr != nil {
+			log.Printf("[WARN] best-effort cleanup DELETE for artifact version %q after failed POST (%v) also failed: %v", version, err, delErr)
+		}
+	}
+	return err
+}
+
+func isReconciledUpload(config *Config, addr, version, reqPath string, err error) bool {
+	if isHTTPErrorWithCode(err, http.StatusConflict) && wasRetried(err) {
+		log.Printf("[WARN] POST %s returned 409 after a retry; treating upload of version %q as successful", reqPath, version)
+		return true
 	}
 	// The final attempt may have been stored even though its response was a
 	// transport or retryable error. The version was absent before, so if it
 	// exists now this call created it.
-	var hErr *httpError
-	if (!errors.As(err, &hErr) && !errors.Is(err, context.Canceled)) || (hErr != nil && isRetryableStatusCode(hErr.code)) {
+	if isAmbiguousWriteError(err) {
 		if present, checkErr := artifactVersionExists(config, addr, version); checkErr == nil && present {
-			log.Printf("[WARN] POST %s failed (%v) but version %s now exists; treating upload as successful", req.URL.Path, err, version)
-			return nil
+			log.Printf("[WARN] POST %s failed (%v) but version %q now exists; treating upload as successful", reqPath, err, version)
+			return true
 		}
 	}
-	return err
+	return false
+}
+
+func isAmbiguousWriteError(err error) bool {
+	var hErr *httpError
+	return (!errors.As(err, &hErr) && !errors.Is(err, context.Canceled)) || (hErr != nil && isRetryableStatusCode(hErr.code))
 }
 
 // artifactVersionExists reports whether the given version of the artifact at

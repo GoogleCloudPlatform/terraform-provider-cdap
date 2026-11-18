@@ -179,6 +179,7 @@ func TestUploadPluginJarReconcile(t *testing.T) {
 		postResponses []int
 		wantGETs      int32
 		wantPOSTs     int32
+		wantDELETEs   int32
 		wantErr       bool
 	}{
 		{
@@ -188,6 +189,7 @@ func TestUploadPluginJarReconcile(t *testing.T) {
 			postResponses: []int{http.StatusServiceUnavailable, http.StatusConflict},
 			wantGETs:      1,
 			wantPOSTs:     2,
+			wantDELETEs:   0,
 			wantErr:       false,
 		},
 		{
@@ -197,6 +199,7 @@ func TestUploadPluginJarReconcile(t *testing.T) {
 			postResponses: []int{http.StatusConflict},
 			wantGETs:      1,
 			wantPOSTs:     1,
+			wantDELETEs:   0,
 			wantErr:       true,
 		},
 		{
@@ -206,6 +209,7 @@ func TestUploadPluginJarReconcile(t *testing.T) {
 			postResponses: []int{http.StatusServiceUnavailable, http.StatusConflict},
 			wantGETs:      1,
 			wantPOSTs:     2,
+			wantDELETEs:   0,
 			wantErr:       true,
 		},
 		{
@@ -215,7 +219,18 @@ func TestUploadPluginJarReconcile(t *testing.T) {
 			postResponses: []int{http.StatusBadGateway},
 			wantGETs:      2,
 			wantPOSTs:     1,
+			wantDELETEs:   0,
 			wantErr:       false,
+		},
+		{
+			name:          "absent before, final attempt 502 and still absent triggers best-effort DELETE",
+			maxAttempts:   1,
+			getResponses:  []int{http.StatusNotFound, http.StatusNotFound},
+			postResponses: []int{http.StatusBadGateway},
+			wantGETs:      2,
+			wantPOSTs:     1,
+			wantDELETEs:   1,
+			wantErr:       true,
 		},
 		{
 			name:          "absent before, POST 400 fails without post-check GET",
@@ -224,13 +239,14 @@ func TestUploadPluginJarReconcile(t *testing.T) {
 			postResponses: []int{http.StatusBadRequest},
 			wantGETs:      1,
 			wantPOSTs:     1,
+			wantDELETEs:   0,
 			wantErr:       true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			var gets, posts int32
+			var gets, posts, deletes int32
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.Method {
 				case http.MethodGet:
@@ -245,6 +261,9 @@ func TestUploadPluginJarReconcile(t *testing.T) {
 						idx = len(tc.postResponses) - 1
 					}
 					w.WriteHeader(tc.postResponses[idx])
+				case http.MethodDelete:
+					atomic.AddInt32(&deletes, 1)
+					w.WriteHeader(http.StatusNotFound)
 				}
 			}))
 			defer srv.Close()
@@ -269,6 +288,9 @@ func TestUploadPluginJarReconcile(t *testing.T) {
 			}
 			if got := atomic.LoadInt32(&posts); got != tc.wantPOSTs {
 				t.Fatalf("POST count = %d, want %d", got, tc.wantPOSTs)
+			}
+			if got := atomic.LoadInt32(&deletes); got != tc.wantDELETEs {
+				t.Fatalf("DELETE count = %d, want %d", got, tc.wantDELETEs)
 			}
 		})
 	}
@@ -321,6 +343,184 @@ func TestExpandRetryPolicy(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := expandRetryPolicy(tc.raw); got != tc.want {
 				t.Errorf("expandRetryPolicy(%v) = %+v, want %+v", tc.raw, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestUploadArtifactAtomic(t *testing.T) {
+	tests := []struct {
+		name        string
+		retry       retryPolicy
+		getCodes    []int
+		postCode    int
+		putCode     int
+		deleteCode  int
+		props       map[string]string
+		wantDeletes int32
+		wantPUTs    int32
+		wantErr     bool
+		wantIdAfter string
+	}{
+		{
+			name:        "happy path sets ID after props upload",
+			getCodes:    []int{http.StatusNotFound},
+			postCode:    http.StatusOK,
+			putCode:     http.StatusOK,
+			deleteCode:  http.StatusOK,
+			props:       map[string]string{"k": "v"},
+			wantDeletes: 0,
+			wantPUTs:    1,
+			wantErr:     false,
+			wantIdAfter: "my-plugin",
+		},
+		{
+			name:        "empty properties skips PUT",
+			getCodes:    []int{http.StatusNotFound},
+			postCode:    http.StatusOK,
+			putCode:     http.StatusInternalServerError,
+			deleteCode:  http.StatusOK,
+			props:       map[string]string{},
+			wantDeletes: 0,
+			wantPUTs:    0,
+			wantErr:     false,
+			wantIdAfter: "my-plugin",
+		},
+		{
+			name:        "step 1 POST 502 when absent before triggers best-effort delete",
+			getCodes:    []int{http.StatusNotFound},
+			postCode:    http.StatusBadGateway,
+			putCode:     http.StatusOK,
+			deleteCode:  http.StatusNotFound,
+			props:       map[string]string{"k": "v"},
+			wantDeletes: 1,
+			wantPUTs:    0,
+			wantErr:     true,
+			wantIdAfter: "",
+		},
+		{
+			name:        "step 1 POST 502 when pre-existing skips delete to protect unmanaged artifact",
+			getCodes:    []int{http.StatusOK},
+			postCode:    http.StatusBadGateway,
+			putCode:     http.StatusOK,
+			deleteCode:  http.StatusOK,
+			props:       map[string]string{"k": "v"},
+			wantDeletes: 0,
+			wantPUTs:    0,
+			wantErr:     true,
+			wantIdAfter: "",
+		},
+		{
+			name:        "step 2 PUT props fails and rollback delete succeeds leaves ID empty",
+			getCodes:    []int{http.StatusNotFound},
+			postCode:    http.StatusOK,
+			putCode:     http.StatusInternalServerError,
+			deleteCode:  http.StatusOK,
+			props:       map[string]string{"k": "v"},
+			wantDeletes: 1,
+			wantPUTs:    1,
+			wantErr:     true,
+			wantIdAfter: "",
+		},
+		{
+			name:        "step 2 PUT props fails and rollback delete returns 404 still succeeds",
+			getCodes:    []int{http.StatusNotFound},
+			postCode:    http.StatusOK,
+			putCode:     http.StatusInternalServerError,
+			deleteCode:  http.StatusNotFound,
+			props:       map[string]string{"k": "v"},
+			wantDeletes: 1,
+			wantPUTs:    1,
+			wantErr:     true,
+			wantIdAfter: "",
+		},
+		{
+			name:        "step 1 retry reconciles POST 502 via post-check GET 200 then step 2 PUT failure rolls back JAR",
+			retry:       retryPolicy{enabled: true, timeout: 10 * time.Second, maxAttempts: 1},
+			getCodes:    []int{http.StatusNotFound, http.StatusOK},
+			postCode:    http.StatusBadGateway,
+			putCode:     http.StatusInternalServerError,
+			deleteCode:  http.StatusOK,
+			props:       map[string]string{"k": "v"},
+			wantDeletes: 1,
+			wantPUTs:    1,
+			wantErr:     true,
+			wantIdAfter: "",
+		},
+		{
+			name:        "step 2 PUT props fails and rollback delete fails sets ID to taint resource",
+			getCodes:    []int{http.StatusNotFound},
+			postCode:    http.StatusOK,
+			putCode:     http.StatusInternalServerError,
+			deleteCode:  http.StatusInternalServerError,
+			props:       map[string]string{"k": "v"},
+			wantDeletes: 1,
+			wantPUTs:    1,
+			wantErr:     true,
+			wantIdAfter: "my-plugin",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var gets, deletes, puts int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var wantPath string
+				switch r.Method {
+				case http.MethodGet:
+					wantPath = "/v3/namespaces/default/artifacts/my-plugin/versions/1.0.0"
+					idx := int(atomic.AddInt32(&gets, 1)) - 1
+					if idx >= len(tc.getCodes) {
+						idx = len(tc.getCodes) - 1
+					}
+					w.WriteHeader(tc.getCodes[idx])
+				case http.MethodPost:
+					wantPath = "/v3/namespaces/default/artifacts/my-plugin"
+					w.WriteHeader(tc.postCode)
+				case http.MethodPut:
+					wantPath = "/v3/namespaces/default/artifacts/my-plugin/versions/1.0.0/properties"
+					atomic.AddInt32(&puts, 1)
+					w.WriteHeader(tc.putCode)
+				case http.MethodDelete:
+					wantPath = "/v3/namespaces/default/artifacts/my-plugin/versions/1.0.0"
+					atomic.AddInt32(&deletes, 1)
+					w.WriteHeader(tc.deleteCode)
+				}
+				if r.URL.Path != wantPath {
+					t.Errorf("%s path = %q, want %q", r.Method, r.URL.Path, wantPath)
+				}
+			}))
+			defer srv.Close()
+
+			cfg := &Config{
+				host:       srv.URL,
+				httpClient: srv.Client(),
+				retry:      tc.retry,
+			}
+			d := resourceLocalArtifact().TestResourceData()
+			_ = d.Set("namespace", "default")
+			_ = d.Set("name", "my-plugin")
+			_ = d.Set("version", "1.0.0")
+
+			a := &artifact{
+				name:    "my-plugin",
+				version: "1.0.0",
+				config:  &artifactConfig{Properties: tc.props},
+				jar:     []byte("jar"),
+			}
+
+			err := uploadArtifact(cfg, d, a)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("uploadArtifact err = %v, wantErr = %v", err, tc.wantErr)
+			}
+			if got := atomic.LoadInt32(&deletes); got != tc.wantDeletes {
+				t.Errorf("DELETE count = %d, want %d", got, tc.wantDeletes)
+			}
+			if got := atomic.LoadInt32(&puts); got != tc.wantPUTs {
+				t.Errorf("PUT count = %d, want %d", got, tc.wantPUTs)
+			}
+			if d.Id() != tc.wantIdAfter {
+				t.Errorf("d.Id() = %q, want %q", d.Id(), tc.wantIdAfter)
 			}
 		})
 	}
